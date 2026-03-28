@@ -1,0 +1,1628 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
+
+import 'order_data.dart';
+
+class TruckProfilePage extends StatefulWidget {
+  final Map<String, dynamic> truck;
+
+  const TruckProfilePage({super.key, required this.truck});
+
+  @override
+  State<TruckProfilePage> createState() => _TruckProfilePageState();
+}
+
+class _TruckProfilePageState extends State<TruckProfilePage> {
+  bool get _isKitchen {
+    final String type = (widget.truck['type'] ?? '').toString().toLowerCase();
+    return type == 'kitchen' || type == 'home_kitchen';
+  }
+
+  List<String> _buildGalleryImages() {
+    final dynamic gallery = widget.truck['galleryImages'];
+
+    if (gallery is List && gallery.isNotEmpty) {
+      return gallery.map((image) => image.toString()).toList();
+    }
+
+    final String mainImage = (widget.truck['image'] ?? '').toString();
+
+    if (mainImage.isEmpty) {
+      return [];
+    }
+
+    return [mainImage];
+  }
+
+  List<StoryItem> _buildStoryItems() {
+    final List<StoryItem> stories = [];
+    final dynamic rawStories = widget.truck['storyVideos'];
+
+    if (rawStories is List && rawStories.isNotEmpty) {
+      for (final dynamic item in rawStories) {
+        if (item is Map) {
+          final String path =
+          (item['path'] ?? item['video'] ?? item['url'] ?? '')
+              .toString()
+              .trim();
+          final String createdAt =
+          (item['createdAt'] ?? item['storyCreatedAt'] ?? '')
+              .toString()
+              .trim();
+
+          if (path.isEmpty) continue;
+          if (!_storyIsActive(createdAt)) continue;
+          if (!File(path).existsSync()) continue;
+
+          stories.add(
+            StoryItem(
+              path: path,
+              createdAt: createdAt,
+              label: (item['label'] ?? item['title'] ?? 'Story').toString(),
+            ),
+          );
+        } else {
+          final String path = item.toString().trim();
+          if (path.isEmpty) continue;
+          if (!File(path).existsSync()) continue;
+
+          stories.add(
+            StoryItem(
+              path: path,
+              createdAt: '',
+              label: 'Story',
+            ),
+          );
+        }
+      }
+    }
+
+    if (stories.isEmpty) {
+      final String storyVideoPath =
+      (widget.truck['storyVideo'] ?? '').toString().trim();
+      final String storyCreatedAt =
+      (widget.truck['storyCreatedAt'] ?? '').toString().trim();
+
+      if (storyVideoPath.isNotEmpty &&
+          _storyIsActive(storyCreatedAt) &&
+          File(storyVideoPath).existsSync()) {
+        stories.add(
+          StoryItem(
+            path: storyVideoPath,
+            createdAt: storyCreatedAt,
+            label: 'Today Story',
+          ),
+        );
+      }
+    }
+
+    if (stories.length > 5) {
+      return stories.take(5).toList();
+    }
+
+    return stories;
+  }
+
+  bool _storyIsActive(String createdAt) {
+    if (createdAt.trim().isEmpty) return true;
+
+    try {
+      final DateTime createdTime = DateTime.parse(createdAt);
+      return DateTime.now().difference(createdTime).inHours < 24;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  String _buildTimingText() {
+    final String timing = (widget.truck['timing'] ?? '').toString().trim();
+    if (timing.isNotEmpty) return timing;
+
+    final String openTime = (widget.truck['openTime'] ?? '').toString().trim();
+    final String closeTime =
+    (widget.truck['closeTime'] ?? '').toString().trim();
+
+    if (openTime.isNotEmpty && closeTime.isNotEmpty) {
+      return '$openTime - $closeTime';
+    }
+
+    if (openTime.isNotEmpty) return openTime;
+    if (closeTime.isNotEmpty) return closeTime;
+
+    return 'Timing not available';
+  }
+
+  bool _isFilePath(String path) {
+    return path.startsWith('/') || path.contains(r':\');
+  }
+
+  Widget _buildImage(
+      String path, {
+        double? width,
+        double? height,
+        BoxFit fit = BoxFit.cover,
+      }) {
+    if (_isFilePath(path)) {
+      return Image.file(
+        File(path),
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: width,
+            height: height,
+            color: Colors.grey.shade300,
+            child: const Icon(Icons.broken_image, color: Colors.grey, size: 40),
+          );
+        },
+      );
+    }
+
+    return Image.asset(
+      path,
+      width: width,
+      height: height,
+      fit: fit,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          width: width,
+          height: height,
+          color: Colors.grey.shade300,
+          child: const Icon(Icons.broken_image, color: Colors.grey, size: 40),
+        );
+      },
+    );
+  }
+
+  String _normalizeSocialUrl(String rawUrl, String platform) {
+    String value = rawUrl.trim();
+
+    if (value.isEmpty) return '';
+
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+
+    value = value.replaceAll('@', '').trim();
+
+    switch (platform) {
+      case 'instagram':
+        if (value.contains('instagram.com')) return 'https://$value';
+        return 'https://instagram.com/$value';
+      case 'facebook':
+        if (value.contains('facebook.com')) return 'https://$value';
+        return 'https://facebook.com/$value';
+      case 'tiktok':
+        if (value.contains('tiktok.com')) return 'https://$value';
+        return 'https://www.tiktok.com/@$value';
+      case 'youtube':
+        if (value.contains('youtube.com') || value.contains('youtu.be')) {
+          return 'https://$value';
+        }
+        return 'https://youtube.com/@$value';
+      default:
+        return 'https://$value';
+    }
+  }
+
+  Future<void> _openSocialLink(String url, {String platform = ''}) async {
+    final String cleanedUrl =
+    platform.isNotEmpty ? _normalizeSocialUrl(url, platform) : url.trim();
+
+    if (cleanedUrl.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Link is empty')),
+      );
+      return;
+    }
+
+    Uri? uri = Uri.tryParse(cleanedUrl);
+
+    if (uri == null || uri.host.isEmpty) {
+      uri = Uri.tryParse('https://$cleanedUrl');
+    }
+
+    if (uri == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid link')),
+      );
+      return;
+    }
+
+    final bool launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open ${uri.toString()}')),
+      );
+    }
+  }
+
+  Future<void> _openPhoneDialer(String phoneNumber) async {
+    final String cleaned = phoneNumber.trim();
+    if (cleaned.isEmpty) return;
+
+    final Uri uri = Uri(scheme: 'tel', path: cleaned);
+    await launchUrl(uri);
+  }
+
+  Future<void> _openWhatsApp(String phoneNumber) async {
+    final String cleaned = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+
+    if (cleaned.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('WhatsApp number not available')),
+      );
+      return;
+    }
+
+    final Uri uri = Uri.parse('https://wa.me/${cleaned.replaceAll('+', '')}');
+
+    final bool launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open WhatsApp')),
+      );
+    }
+  }
+
+  bool _isOpenNow(String timing) {
+    try {
+      final parts = timing.split('-');
+      if (parts.length != 2) return false;
+
+      final TimeOfDay now = TimeOfDay.now();
+      final TimeOfDay open = _parseTime(parts[0].trim());
+      final TimeOfDay close = _parseTime(parts[1].trim());
+
+      final int nowMinutes = now.hour * 60 + now.minute;
+      final int openMinutes = open.hour * 60 + open.minute;
+      final int closeMinutes = close.hour * 60 + close.minute;
+
+      return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  TimeOfDay _parseTime(String timeStr) {
+    final parts = timeStr.split(' ');
+    final timeParts = parts[0].split(':');
+
+    int hour = int.parse(timeParts[0]);
+    final int minute = int.parse(timeParts[1]);
+    final String period = parts.length > 1 ? parts[1].toUpperCase() : 'AM';
+
+    if (period == 'PM' && hour != 12) {
+      hour += 12;
+    } else if (period == 'AM' && hour == 12) {
+      hour = 0;
+    }
+
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 15, color: Colors.black87),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showOrderSummaryDialog({
+    required BuildContext bottomSheetContext,
+    required bool isKitchen,
+    required String customerName,
+    required String phone,
+    required String items,
+    required String quantity,
+    required String dateText,
+    required String timeText,
+    required String notes,
+  }) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: bottomSheetContext,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(isKitchen ? 'Confirm Pre-Order' : 'Confirm Order Request'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSummaryRow('Business', widget.truck['title'] ?? ''),
+                _buildSummaryRow('Name', customerName),
+                _buildSummaryRow('Phone', phone),
+                _buildSummaryRow('Items', items),
+                _buildSummaryRow('Quantity', quantity),
+                _buildSummaryRow('Date', dateText),
+                _buildSummaryRow(isKitchen ? 'Time Slot' : 'Pickup Time', timeText),
+                _buildSummaryRow(
+                  'Notes',
+                  notes.trim().isEmpty ? 'No notes' : notes,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Edit'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Confirm Request'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      if (!mounted) return;
+
+      OrderData.orders.add({
+        'business': widget.truck['title'] ?? '',
+        'customer': customerName,
+        'phone': phone,
+        'items': items,
+        'quantity': quantity,
+        'date': dateText,
+        'time': timeText,
+        'notes': notes,
+        'status': 'Pending',
+      });
+
+      Navigator.pop(bottomSheetContext);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isKitchen
+                ? 'Pre-order request submitted for ${widget.truck['title']}'
+                : 'Order request submitted for ${widget.truck['title']}',
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showOrderBottomSheet() {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final itemsController = TextEditingController();
+    final quantityController = TextEditingController();
+    final notesController = TextEditingController();
+
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
+    String? selectedTimeSlot;
+
+    final List<String> kitchenTimeSlots = [
+      '9:00 AM - 10:00 AM',
+      '12:00 PM - 1:00 PM',
+      '3:00 PM - 4:00 PM',
+      '5:00 PM - 6:00 PM',
+      '7:00 PM - 8:00 PM',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        final bool isKitchen = _isKitchen;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> pickDate() async {
+              final DateTime now = DateTime.now();
+              final DateTime initialDate = selectedDate ?? now;
+
+              final DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate: initialDate,
+                firstDate: now,
+                lastDate: DateTime(now.year + 1),
+              );
+
+              if (picked != null) {
+                setModalState(() {
+                  selectedDate = picked;
+                });
+              }
+            }
+
+            Future<void> pickTime() async {
+              final TimeOfDay? picked = await showTimePicker(
+                context: context,
+                initialTime: selectedTime ?? TimeOfDay.now(),
+              );
+
+              if (picked != null) {
+                setModalState(() {
+                  selectedTime = picked;
+                });
+              }
+            }
+
+            String dateText() {
+              if (selectedDate == null) return 'Select Date';
+              return '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}';
+            }
+
+            String timeText() {
+              if (selectedTime == null) return 'Select Time';
+              return selectedTime!.format(context);
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      isKitchen ? 'Schedule Pre-Order' : 'Build Your Order',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.truck['title'] ?? '',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: isKitchen ? Colors.purple : Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Your Name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: itemsController,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: 'What would you like to order?',
+                        hintText: 'Example: 2 tacos, 1 burrito, 1 mango lassi',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: quantityController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Quantity',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: pickDate,
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(dateText()),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    isKitchen
+                        ? DropdownButtonFormField<String>(
+                      value: selectedTimeSlot,
+                      decoration: InputDecoration(
+                        labelText: 'Select Time Slot',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      items: kitchenTimeSlots.map((slot) {
+                        return DropdownMenuItem<String>(
+                          value: slot,
+                          child: Text(slot),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setModalState(() {
+                          selectedTimeSlot = value;
+                        });
+                      },
+                    )
+                        : SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: pickTime,
+                        icon: const Icon(Icons.access_time),
+                        label: Text(timeText()),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isKitchen
+                          ? 'Choose your preferred pickup date and available time slot.'
+                          : 'Choose your preferred pickup date and time.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notesController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Notes',
+                        hintText: 'Spicy level, no onions, extra sauce, etc.',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final bool missingRequired =
+                              nameController.text.trim().isEmpty ||
+                                  phoneController.text.trim().isEmpty ||
+                                  itemsController.text.trim().isEmpty ||
+                                  quantityController.text.trim().isEmpty ||
+                                  selectedDate == null ||
+                                  (isKitchen
+                                      ? selectedTimeSlot == null
+                                      : selectedTime == null);
+
+                          if (missingRequired) {
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please fill all required fields and select date and time',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          final String finalDateText =
+                              '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}';
+                          final String finalTimeText = isKitchen
+                              ? selectedTimeSlot!
+                              : selectedTime!.format(this.context);
+
+                          await _showOrderSummaryDialog(
+                            bottomSheetContext: bottomSheetContext,
+                            isKitchen: isKitchen,
+                            customerName: nameController.text.trim(),
+                            phone: phoneController.text.trim(),
+                            items: itemsController.text.trim(),
+                            quantity: quantityController.text.trim(),
+                            dateText: finalDateText,
+                            timeText: finalTimeText,
+                            notes: notesController.text.trim(),
+                          );
+                        },
+                        icon: const Icon(Icons.receipt_long),
+                        label: const Text('Review Order Summary'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                          isKitchen ? Colors.purple : Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPremiumSocialIcon({
+    required IconData icon,
+    required VoidCallback onTap,
+    required String tooltip,
+    required List<Color> colors,
+    Color iconColor = Colors.white,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(30),
+          onTap: onTap,
+          child: Ink(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: colors,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.last.withOpacity(0.30),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 22, color: iconColor),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> galleryImages = _buildGalleryImages();
+    final List<StoryItem> stories = _buildStoryItems();
+
+    final String imagePath = (widget.truck['image'] ?? '').toString().isNotEmpty
+        ? (widget.truck['image'] ?? '').toString()
+        : (galleryImages.isNotEmpty ? galleryImages.first : '');
+
+    final String timingText = _buildTimingText();
+    final bool isOpen = timingText.contains('-') ? _isOpenNow(timingText) : false;
+
+    final String instagram = (widget.truck['instagram'] ?? '').toString();
+    final String facebook = (widget.truck['facebook'] ?? '').toString();
+    final String tiktok = (widget.truck['tiktok'] ?? '').toString();
+    final String youtube = (widget.truck['youtube'] ?? '').toString();
+    final String whatsapp =
+    (widget.truck['whatsapp'] ?? widget.truck['phone'] ?? '').toString();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.truck['title'] ?? 'Business Profile'),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            imagePath.isNotEmpty
+                ? _buildImage(
+              imagePath,
+              height: 240,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            )
+                : Container(
+              height: 240,
+              width: double.infinity,
+              color: Colors.grey[300],
+              child: const Icon(
+                Icons.restaurant,
+                size: 80,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                widget.truck['title'] ?? '',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                widget.truck['cuisine'] ?? '',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: _isKitchen ? Colors.purple : Colors.orange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (stories.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Today Stories',
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FullScreenStoryViewerPage(
+                          stories: stories,
+                          initialIndex: 0,
+                          title: widget.truck['title'] ?? 'Story',
+                        ),
+                      ),
+                    );
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 74,
+                        height: 74,
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: _isKitchen
+                                ? [Colors.purple, Colors.deepPurpleAccent]
+                                : [Colors.orange, Colors.deepOrange],
+                          ),
+                        ),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.black,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              const Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                              Positioned(
+                                bottom: 6,
+                                right: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${stories.length}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: 90,
+                        child: Text(
+                          '${stories.length} stories',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+            ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.phone, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text((widget.truck['phone'] ?? '').toString()),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final String phone = (widget.truck['phone'] ?? '').toString();
+                      if (phone.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Phone number not available'),
+                          ),
+                        );
+                        return;
+                      }
+                      await _openPhoneDialer(phone);
+                    },
+                    icon: const Icon(Icons.call, size: 18),
+                    label: const Text('Call Now'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (instagram.isNotEmpty ||
+                facebook.isNotEmpty ||
+                tiktok.isNotEmpty ||
+                youtube.isNotEmpty ||
+                whatsapp.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text(
+                        'Connect',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          if (instagram.isNotEmpty)
+                            _buildPremiumSocialIcon(
+                              icon: Icons.camera_alt,
+                              tooltip: 'Instagram',
+                              colors: const [
+                                Color(0xFF833AB4),
+                                Color(0xFFE1306C),
+                                Color(0xFFFCAF45),
+                              ],
+                              onTap: () => _openSocialLink(
+                                instagram,
+                                platform: 'instagram',
+                              ),
+                            ),
+                          if (facebook.isNotEmpty)
+                            _buildPremiumSocialIcon(
+                              icon: Icons.facebook,
+                              tooltip: 'Facebook',
+                              colors: const [
+                                Color(0xFF1877F2),
+                                Color(0xFF0A58CA),
+                              ],
+                              onTap: () => _openSocialLink(
+                                facebook,
+                                platform: 'facebook',
+                              ),
+                            ),
+                          if (tiktok.isNotEmpty)
+                            _buildPremiumSocialIcon(
+                              icon: Icons.music_note,
+                              tooltip: 'TikTok',
+                              colors: const [
+                                Color(0xFF111111),
+                                Color(0xFF25F4EE),
+                                Color(0xFFFE2C55),
+                              ],
+                              onTap: () => _openSocialLink(
+                                tiktok,
+                                platform: 'tiktok',
+                              ),
+                            ),
+                          if (youtube.isNotEmpty)
+                            _buildPremiumSocialIcon(
+                              icon: Icons.play_arrow_rounded,
+                              tooltip: 'YouTube',
+                              colors: const [
+                                Color(0xFFFF0000),
+                                Color(0xFFCC0000),
+                              ],
+                              onTap: () => _openSocialLink(
+                                youtube,
+                                platform: 'youtube',
+                              ),
+                            ),
+                          if (whatsapp.isNotEmpty)
+                            _buildPremiumSocialIcon(
+                              icon: Icons.message_rounded,
+                              tooltip: 'WhatsApp',
+                              colors: const [
+                                Color(0xFF25D366),
+                                Color(0xFF128C7E),
+                              ],
+                              onTap: () => _openWhatsApp(whatsapp),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _showOrderBottomSheet,
+                  icon: Icon(_isKitchen ? Icons.schedule : Icons.shopping_bag),
+                  label: Text(
+                    _isKitchen ? 'Schedule Pre-Order' : 'Build Your Order',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isKitchen ? Colors.purple : Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.access_time, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(timingText)),
+                  if (timingText.contains('-')) ...[
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isOpen
+                            ? Colors.green.shade100
+                            : Colors.red.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        isOpen ? 'OPEN' : 'CLOSED',
+                        style: TextStyle(
+                          color: isOpen ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Food Photos',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 120,
+              child: galleryImages.isNotEmpty
+                  ? ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: galleryImages.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FullScreenGalleryPage(
+                            images: galleryImages,
+                            initialIndex: index,
+                          ),
+                        ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: _buildImage(
+                        galleryImages[index],
+                        width: 150,
+                        height: 120,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                },
+              )
+                  : const Center(
+                child: Text('No food photos available'),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Daily Special',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color:
+                  _isKitchen ? Colors.purple.shade100 : Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  widget.truck['dailySpecial'] ??
+                      'No daily special available today',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Menu',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  (widget.truck['menu'] ?? '').toString(),
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'About',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                (widget.truck['description'] ?? '').toString(),
+                style: const TextStyle(fontSize: 16, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class StoryItem {
+  final String path;
+  final String createdAt;
+  final String label;
+
+  StoryItem({
+    required this.path,
+    required this.createdAt,
+    required this.label,
+  });
+}
+
+class FullScreenStoryViewerPage extends StatefulWidget {
+  final List<StoryItem> stories;
+  final int initialIndex;
+  final String title;
+
+  const FullScreenStoryViewerPage({
+    super.key,
+    required this.stories,
+    required this.initialIndex,
+    required this.title,
+  });
+
+  @override
+  State<FullScreenStoryViewerPage> createState() =>
+      _FullScreenStoryViewerPageState();
+}
+
+class _FullScreenStoryViewerPageState extends State<FullScreenStoryViewerPage> {
+  VideoPlayerController? _videoController;
+  late int _currentIndex;
+  bool _isLoading = true;
+  bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _loadCurrentStory();
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCurrentStory() async {
+    final oldController = _videoController;
+
+    setState(() {
+      _isLoading = true;
+      _isPlaying = false;
+      _videoController = null;
+    });
+
+    await oldController?.dispose();
+
+    final String path = widget.stories[_currentIndex].path;
+    final VideoPlayerController controller =
+    VideoPlayerController.file(File(path));
+
+    try {
+      await controller.initialize();
+      await controller.setLooping(false);
+      await controller.seekTo(Duration.zero);
+      await controller.play();
+
+      controller.addListener(() async {
+        if (!mounted) return;
+        if (_videoController != controller) return;
+
+        final value = controller.value;
+        final bool finished =
+            value.isInitialized &&
+                value.duration > Duration.zero &&
+                value.position >= value.duration &&
+                !value.isPlaying;
+
+        if (finished) {
+          if (_currentIndex < widget.stories.length - 1) {
+            await _goToStory(_currentIndex + 1);
+          } else {
+            setState(() {
+              _isPlaying = false;
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {});
+          }
+        }
+      });
+
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+
+      setState(() {
+        _videoController = controller;
+        _isLoading = false;
+        _isPlaying = true;
+      });
+    } catch (e) {
+      await controller.dispose();
+
+      if (!mounted) return;
+
+      setState(() {
+        _videoController = null;
+        _isLoading = false;
+        _isPlaying = false;
+      });
+    }
+  }
+
+  Future<void> _togglePlayPause() async {
+    if (_videoController == null) return;
+
+    if (_videoController!.value.isPlaying) {
+      await _videoController!.pause();
+      if (!mounted) return;
+      setState(() {
+        _isPlaying = false;
+      });
+    } else {
+      await _videoController!.play();
+      if (!mounted) return;
+      setState(() {
+        _isPlaying = true;
+      });
+    }
+  }
+
+  Future<void> _goToStory(int index) async {
+    if (index < 0 || index >= widget.stories.length) return;
+
+    setState(() {
+      _currentIndex = index;
+    });
+
+    await _loadCurrentStory();
+  }
+
+  Widget _buildProgressBars() {
+    return Row(
+      children: List.generate(widget.stories.length, (index) {
+        double progress = 0;
+
+        if (index < _currentIndex) {
+          progress = 1;
+        } else if (index == _currentIndex &&
+            _videoController != null &&
+            _videoController!.value.isInitialized &&
+            _videoController!.value.duration.inMilliseconds > 0) {
+          progress = _videoController!.value.position.inMilliseconds /
+              _videoController!.value.duration.inMilliseconds;
+
+          if (progress < 0) progress = 0;
+          if (progress > 1) progress = 1;
+        }
+
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(
+              right: index == widget.stories.length - 1 ? 0 : 4,
+            ),
+            height: 3,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: progress,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final StoryItem currentStory = widget.stories[_currentIndex];
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: _isLoading
+                  ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+                  : _videoController != null &&
+                  _videoController!.value.isInitialized
+                  ? GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: (details) async {
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  final dx = details.localPosition.dx;
+
+                  if (dx < screenWidth * 0.3) {
+                    await _goToStory(_currentIndex - 1);
+                  } else if (dx > screenWidth * 0.7) {
+                    await _goToStory(_currentIndex + 1);
+                  } else {
+                    await _togglePlayPause();
+                  }
+                },
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: _videoController!.value.aspectRatio,
+                    child: VideoPlayer(_videoController!),
+                  ),
+                ),
+              )
+                  : const Center(
+                child: Text(
+                  'Could not load story',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              left: 12,
+              right: 12,
+              child: Column(
+                children: [
+                  _buildProgressBars(),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      ),
+                      Expanded(
+                        child: Text(
+                          widget.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '${_currentIndex + 1}/${widget.stories.length}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (!_isLoading && !_isPlaying)
+              const Center(
+                child: Icon(
+                  Icons.play_circle_fill,
+                  color: Colors.white,
+                  size: 72,
+                ),
+              ),
+            Positioned(
+              bottom: 18,
+              left: 16,
+              right: 16,
+              child: Column(
+                children: [
+                  Text(
+                    currentStory.label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap left for previous • center to pause/play • right for next',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FullScreenGalleryPage extends StatefulWidget {
+  final List<String> images;
+  final int initialIndex;
+
+  const FullScreenGalleryPage({
+    super.key,
+    required this.images,
+    required this.initialIndex,
+  });
+
+  @override
+  State<FullScreenGalleryPage> createState() => _FullScreenGalleryPageState();
+}
+
+class _FullScreenGalleryPageState extends State<FullScreenGalleryPage> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  bool _isFilePath(String path) {
+    return path.startsWith('/') || path.contains(r':\');
+  }
+
+  Widget _buildImage(String path) {
+    if (_isFilePath(path)) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return const Icon(Icons.broken_image, color: Colors.white, size: 80);
+        },
+      );
+    }
+
+    return Image.asset(
+      path,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return const Icon(Icons.broken_image, color: Colors.white, size: 80);
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          '${_currentIndex + 1} / ${widget.images.length}',
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.images.length,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          return Center(
+            child: InteractiveViewer(
+              minScale: 1,
+              maxScale: 4,
+              child: _buildImage(widget.images[index]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}

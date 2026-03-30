@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
+import 'owner_menu_editor_page.dart';
 
 class OwnerPortalPage extends StatefulWidget {
   const OwnerPortalPage({super.key});
@@ -29,10 +30,15 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   final TextEditingController youtubeController = TextEditingController();
   final TextEditingController whatsappController = TextEditingController();
 
+  final TextEditingController cashAppController = TextEditingController();
+  final TextEditingController zelleController = TextEditingController();
+  final TextEditingController venmoController = TextEditingController();
+
   final ImagePicker _picker = ImagePicker();
 
   File? bannerImage;
   List<File> galleryImages = [];
+  List<Map<String, dynamic>> ownerMenuItems = [];
 
   final int maxGalleryImages = 15;
   final int maxStoryVideos = 5;
@@ -55,6 +61,10 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     tiktokController.dispose();
     youtubeController.dispose();
     whatsappController.dispose();
+
+    cashAppController.dispose();
+    zelleController.dispose();
+    venmoController.dispose();
 
     for (final story in storyVideos) {
       story.controller?.dispose();
@@ -193,6 +203,37 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     setState(() {});
   }
 
+  Future<void> _openMenuEditor() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerMenuEditorPage(
+          initialMenuItems: ownerMenuItems,
+        ),
+      ),
+    );
+
+    if (result != null && result is List) {
+      setState(() {
+        ownerMenuItems = result
+            .whereType<Map>()
+            .map<Map<String, dynamic>>(
+              (item) => {
+            'name': (item['name'] ?? '').toString(),
+            'price': item['price'] ?? 0.0,
+            'category': (item['category'] ?? 'Main Items').toString(),
+          },
+        )
+            .toList();
+
+        menuController.text = ownerMenuItems
+            .map((item) => item['name'].toString())
+            .where((name) => name.trim().isNotEmpty)
+            .join(', ');
+      });
+    }
+  }
+
   void _submitForm() {
     if (nameController.text.trim().isEmpty ||
         cuisineController.text.trim().isEmpty) {
@@ -228,19 +269,20 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       'closeTime': closeTimeController.text.trim(),
       'phone': phoneController.text.trim(),
       'whatsapp': whatsappController.text.trim(),
+
+      'cashApp': cashAppController.text.trim(),
+      'zelle': zelleController.text.trim(),
+      'venmo': venmoController.text.trim(),
+
       'menu': menuController.text.trim(),
+      'menuItems': ownerMenuItems,
       'description': descriptionController.text.trim(),
 
-      // Keep both keys for compatibility with your profile page and older code
       'image': bannerImage?.path ?? '',
       'bannerImage': bannerImage?.path ?? '',
-
       'galleryImages': galleryImages.map((e) => e.path).toList(),
 
-      // New multi-story format
       'storyVideos': storyVideoMaps,
-
-      // Fallback for older profile logic
       'storyVideo': storyVideos.isNotEmpty ? storyVideos.first.file.path : '',
       'storyCreatedAt': storyVideos.isNotEmpty
           ? storyVideos.first.createdAt?.toIso8601String()
@@ -260,12 +302,14 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     required String hintText,
     required TextEditingController controller,
     int maxLines = 1,
+    bool readOnly = false,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: controller,
         maxLines: maxLines,
+        readOnly: readOnly,
         decoration: InputDecoration(
           prefixIcon: Icon(icon),
           hintText: hintText,
@@ -342,6 +386,75 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     );
   }
 
+  Widget _buildMenuSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Menu Setup'),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _openMenuEditor,
+            icon: const Icon(Icons.restaurant_menu),
+            label: Text(
+              ownerMenuItems.isEmpty
+                  ? 'Add / Edit Menu'
+                  : 'Edit Menu (${ownerMenuItems.length} items)',
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildTextField(
+          icon: Icons.menu_book,
+          hintText: 'Selected menu item names will show here',
+          controller: menuController,
+          maxLines: 3,
+          readOnly: true,
+        ),
+        if (ownerMenuItems.isNotEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.orange.shade100),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${ownerMenuItems.length} menu items added',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ownerMenuItems.take(8).map((item) {
+                    return Chip(
+                      label: Text(item['name'].toString()),
+                    );
+                  }).toList(),
+                ),
+                if (ownerMenuItems.length > 8) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '+ ${ownerMenuItems.length - 8} more items',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildBannerSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,9 +468,11 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
             ElevatedButton.icon(
               onPressed: pickBannerImage,
               icon: const Icon(Icons.image),
-              label: Text(bannerImage == null
-                  ? 'Select Banner Image'
-                  : 'Replace Banner Image'),
+              label: Text(
+                bannerImage == null
+                    ? 'Select Banner Image'
+                    : 'Replace Banner Image',
+              ),
             ),
             if (bannerImage != null)
               OutlinedButton.icon(
@@ -548,7 +663,9 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                           child: Text(
                             active ? 'Active' : 'Expired',
                             style: TextStyle(
-                              color: active ? Colors.green.shade800 : Colors.red.shade800,
+                              color: active
+                                  ? Colors.green.shade800
+                                  : Colors.red.shade800,
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
                             ),
@@ -707,12 +824,8 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
               hintText: 'Phone Number',
               controller: phoneController,
             ),
-            _buildTextField(
-              icon: Icons.menu_book,
-              hintText: 'Menu Items',
-              controller: menuController,
-              maxLines: 3,
-            ),
+            _buildMenuSection(),
+            const SizedBox(height: 16),
             _buildTextField(
               icon: Icons.description,
               hintText: 'Description',
@@ -752,6 +865,24 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
               icon: Icons.message_rounded,
               hintText: 'WhatsApp number',
               controller: whatsappController,
+            ),
+            const SizedBox(height: 16),
+            _buildSectionTitle('Payment Methods (Optional)'),
+            const SizedBox(height: 10),
+            _buildTextField(
+              icon: Icons.attach_money,
+              hintText: r'Cash App tag (example: $foodtruck)',
+              controller: cashAppController,
+            ),
+            _buildTextField(
+              icon: Icons.account_balance,
+              hintText: 'Zelle (phone or email)',
+              controller: zelleController,
+            ),
+            _buildTextField(
+              icon: Icons.payments,
+              hintText: 'Venmo username',
+              controller: venmoController,
             ),
             const SizedBox(height: 12),
             SizedBox(

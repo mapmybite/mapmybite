@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
+import 'menu_page.dart';
 
 import 'order_data.dart';
 
@@ -16,6 +17,9 @@ class TruckProfilePage extends StatefulWidget {
 }
 
 class _TruckProfilePageState extends State<TruckProfilePage> {
+  Map<String, int> _selectedMenuCart = {};
+  double _selectedMenuTotal = 0.0;
+
   bool get _isKitchen {
     final String type = (widget.truck['type'] ?? '').toString().toLowerCase();
     return type == 'kitchen' || type == 'home_kitchen';
@@ -316,6 +320,39 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     return TimeOfDay(hour: hour, minute: minute);
   }
 
+  String _selectedItemsText() {
+    if (_selectedMenuCart.isEmpty) return '';
+
+    return _selectedMenuCart.entries
+        .map((entry) => '${entry.value} x ${entry.key}')
+        .join(', ');
+  }
+
+  String _selectedTotalQuantityText() {
+    if (_selectedMenuCart.isEmpty) return '';
+
+    int totalQty = 0;
+    for (final qty in _selectedMenuCart.values) {
+      totalQty += qty;
+    }
+    return totalQty.toString();
+  }
+
+  int _selectedTotalQuantity() {
+    int totalQty = 0;
+    for (final qty in _selectedMenuCart.values) {
+      totalQty += qty;
+    }
+    return totalQty;
+  }
+
+  void _clearSelectedMenuCart() {
+    setState(() {
+      _selectedMenuCart = {};
+      _selectedMenuTotal = 0.0;
+    });
+  }
+
   Widget _buildSummaryRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -362,8 +399,16 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 _buildSummaryRow('Phone', phone),
                 _buildSummaryRow('Items', items),
                 _buildSummaryRow('Quantity', quantity),
+                if (_selectedMenuCart.isNotEmpty)
+                  _buildSummaryRow(
+                    'Estimated Total',
+                    '\$${_selectedMenuTotal.toStringAsFixed(2)}',
+                  ),
                 _buildSummaryRow('Date', dateText),
-                _buildSummaryRow(isKitchen ? 'Time Slot' : 'Pickup Time', timeText),
+                _buildSummaryRow(
+                  isKitchen ? 'Time Slot' : 'Pickup Time',
+                  timeText,
+                ),
                 _buildSummaryRow(
                   'Notes',
                   notes.trim().isEmpty ? 'No notes' : notes,
@@ -398,6 +443,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         'time': timeText,
         'notes': notes,
         'status': 'Pending',
+        'total': _selectedMenuCart.isNotEmpty
+            ? _selectedMenuTotal.toStringAsFixed(2)
+            : '',
+        'cashApp': widget.truck['cashApp'] ?? '',
+        'zelle': widget.truck['zelle'] ?? '',
+        'venmo': widget.truck['venmo'] ?? '',
       });
 
       Navigator.pop(bottomSheetContext);
@@ -417,8 +468,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   void _showOrderBottomSheet() {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
-    final itemsController = TextEditingController();
-    final quantityController = TextEditingController();
+    final itemsController = TextEditingController(
+      text: _selectedItemsText(),
+    );
+    final quantityController = TextEditingController(
+      text: _selectedTotalQuantityText(),
+    );
     final notesController = TextEditingController();
 
     DateTime? selectedDate;
@@ -526,6 +581,59 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 18),
+                    if (_selectedMenuCart.isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Selected Menu Items',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _selectedItemsText(),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Total items: ${_selectedTotalQuantity()}   •   Total: \$${_selectedMenuTotal.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  _clearSelectedMenuCart();
+                                  setModalState(() {
+                                    itemsController.text = '';
+                                    quantityController.text = '';
+                                  });
+                                },
+                                icon: const Icon(Icons.clear),
+                                label: const Text('Clear Selection'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     TextField(
                       controller: nameController,
                       decoration: InputDecoration(
@@ -547,16 +655,103 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: itemsController,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'What would you like to order?',
-                        hintText: 'Example: 2 tacos, 1 burrito, 1 mango lassi',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'What would you like to order?',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => MenuPage(truck: widget.truck),
+                                  ),
+                                );
+
+                                if (result != null && result is Map) {
+                                  final dynamic rawCart = result['cart'];
+                                  final dynamic rawTotal = result['total'];
+
+                                  if (rawCart is Map) {
+                                    final updatedCart = rawCart.map<String, int>(
+                                          (key, value) => MapEntry(
+                                        key.toString(),
+                                        (value as num).toInt(),
+                                      ),
+                                    );
+
+                                    int totalQty = 0;
+                                    for (final qty in updatedCart.values) {
+                                      totalQty += qty;
+                                    }
+
+                                    final itemsText = updatedCart.entries
+                                        .map((entry) => '${entry.value} x ${entry.key}')
+                                        .join(', ');
+
+                                    setState(() {
+                                      _selectedMenuCart = updatedCart;
+                                      _selectedMenuTotal =
+                                      rawTotal is num ? rawTotal.toDouble() : 0.0;
+                                    });
+
+                                    setModalState(() {
+                                      itemsController.text = itemsText;
+                                      quantityController.text = totalQty.toString();
+                                    });
+
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(this.context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('$totalQty item(s) added from menu'),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.restaurant_menu, size: 18),
+                              label: const Text('Browse Menu'),
+                            ),
+                          ],
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: itemsController,
+                          maxLines: 2,
+                          readOnly: _selectedMenuCart.isNotEmpty,
+                          decoration: InputDecoration(
+                            hintText: _selectedMenuCart.isNotEmpty
+                                ? 'Menu items selected'
+                                : 'Example: 2 tacos, 1 burrito, 1 mango lassi',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            suffixIcon: _selectedMenuCart.isNotEmpty
+                                ? IconButton(
+                              onPressed: () {
+                                _clearSelectedMenuCart();
+                                setModalState(() {
+                                  itemsController.text = '';
+                                  quantityController.text = '';
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                              tooltip: 'Clear menu selection',
+                            )
+                                : null,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     TextField(
@@ -613,7 +808,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                         icon: const Icon(Icons.access_time),
                         label: Text(timeText()),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding:
+                          const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -1188,20 +1384,107 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
+              child: SizedBox(
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  (widget.truck['menu'] ?? '').toString(),
-                  style: const TextStyle(fontSize: 16),
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MenuPage(truck: widget.truck),
+                      ),
+                    );
+
+                    if (result != null && result is Map) {
+                      final dynamic rawCart = result['cart'];
+                      final dynamic rawTotal = result['total'];
+
+                      if (rawCart is Map) {
+                        setState(() {
+                          _selectedMenuCart = rawCart.map<String, int>(
+                                (key, value) => MapEntry(
+                              key.toString(),
+                              (value as num).toInt(),
+                            ),
+                          );
+                          _selectedMenuTotal =
+                          rawTotal is num ? rawTotal.toDouble() : 0.0;
+                        });
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '${_selectedTotalQuantity()} item(s) added from menu',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.restaurant_menu),
+                  label: const Text('View Full Menu'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
+            if (_selectedMenuCart.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Selected for Order',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _selectedItemsText(),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Total items: ${_selectedTotalQuantity()}   •   Total: \$${_selectedMenuTotal.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: _clearSelectedMenuCart,
+                          icon: const Icon(Icons.clear),
+                          label: const Text('Clear Selection'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 8),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
@@ -1299,11 +1582,10 @@ class _FullScreenStoryViewerPageState extends State<FullScreenStoryViewerPage> {
         if (_videoController != controller) return;
 
         final value = controller.value;
-        final bool finished =
-            value.isInitialized &&
-                value.duration > Duration.zero &&
-                value.position >= value.duration &&
-                !value.isPlaying;
+        final bool finished = value.isInitialized &&
+            value.duration > Duration.zero &&
+            value.position >= value.duration &&
+            !value.isPlaying;
 
         if (finished) {
           if (_currentIndex < widget.stories.length - 1) {
@@ -1384,9 +1666,8 @@ class _FullScreenStoryViewerPageState extends State<FullScreenStoryViewerPage> {
             _videoController!.value.duration.inMilliseconds > 0) {
           progress = _videoController!.value.position.inMilliseconds /
               _videoController!.value.duration.inMilliseconds;
-
-          if (progress < 0) progress = 0;
           if (progress > 1) progress = 1;
+          if (progress < 0) progress = 0;
         }
 
         return Expanded(
@@ -1417,7 +1698,7 @@ class _FullScreenStoryViewerPageState extends State<FullScreenStoryViewerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final StoryItem currentStory = widget.stories[_currentIndex];
+    final currentStory = widget.stories[_currentIndex];
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -1614,10 +1895,10 @@ class _FullScreenGalleryPageState extends State<FullScreenGalleryPage> {
           });
         },
         itemBuilder: (context, index) {
-          return Center(
-            child: InteractiveViewer(
-              minScale: 1,
-              maxScale: 4,
+          return InteractiveViewer(
+            minScale: 0.8,
+            maxScale: 4.0,
+            child: Center(
               child: _buildImage(widget.images[index]),
             ),
           );

@@ -33,6 +33,10 @@ class _TruckPageState extends State<TruckPage> {
       'phone': '(209) 111-1111',
       'timing': '10:00 AM - 8:00 PM',
       'menu': 'Tacos, Burritos, Quesadillas',
+      'menuItems': [],
+      'cashApp': '',
+      'zelle': '',
+      'venmo': '',
       'description': 'Fresh Mexican street food in Stockton.',
       'image': 'assets/images/mexican_food.jpg',
       'galleryImages': [
@@ -52,6 +56,10 @@ class _TruckPageState extends State<TruckPage> {
       'phone': '(209) 222-2222',
       'timing': '11:00 AM - 9:00 PM',
       'menu': 'Burgers, Fries, Wraps',
+      'menuItems': [],
+      'cashApp': '',
+      'zelle': '',
+      'venmo': '',
       'description': 'Quick and tasty fast food favorites.',
       'image': 'assets/images/fast_food.jpg',
       'galleryImages': [
@@ -71,6 +79,10 @@ class _TruckPageState extends State<TruckPage> {
       'phone': '(209) 333-3333',
       'timing': '12:00 PM - 10:00 PM',
       'menu': 'Butter Chicken, Naan, Samosa',
+      'menuItems': [],
+      'cashApp': '',
+      'zelle': '',
+      'venmo': '',
       'description': 'Flavorful Indian food on the go.',
       'image': 'assets/images/indian_food.jpg',
       'galleryImages': [
@@ -90,6 +102,10 @@ class _TruckPageState extends State<TruckPage> {
       'phone': '(209) 444-4444',
       'timing': '9:00 AM - 7:00 PM',
       'menu': 'Chole Bhature, Paneer Wrap, Lassi',
+      'menuItems': [],
+      'cashApp': '',
+      'zelle': '',
+      'venmo': '',
       'description': 'Punjabi comfort food with a fun twist.',
       'image': 'assets/images/punjabi_food.jpg',
       'galleryImages': [
@@ -112,6 +128,10 @@ class _TruckPageState extends State<TruckPage> {
       'phone': '(209) 555-1111',
       'timing': '8:00 AM - 6:00 PM',
       'menu': 'Paratha, Dal, Sabzi',
+      'menuItems': [],
+      'cashApp': '',
+      'zelle': '',
+      'venmo': '',
       'description': 'Homestyle Punjabi meals made fresh daily.',
       'image': 'assets/images/home_food.jpg',
       'galleryImages': [
@@ -131,6 +151,10 @@ class _TruckPageState extends State<TruckPage> {
       'phone': '(209) 555-2222',
       'timing': '9:00 AM - 5:00 PM',
       'menu': 'Rajma Rice, Aloo Gobi, Roti',
+      'menuItems': [],
+      'cashApp': '',
+      'zelle': '',
+      'venmo': '',
       'description': 'Fresh vegetarian home kitchen meals.',
       'image': 'assets/images/home_food.jpg',
       'galleryImages': [
@@ -226,6 +250,7 @@ class _TruckPageState extends State<TruckPage> {
       'closeTime': result['closeTime'] ?? '',
       'address': result['address'] ?? '',
       'menu': result['menu'] ?? '',
+      'menuItems': result['menuItems'] ?? [],
       'description': result['description'] ?? '',
       'image': result['bannerImage'] ?? _pickMainImage(result),
       'bannerImage': result['bannerImage'] ?? '',
@@ -238,6 +263,9 @@ class _TruckPageState extends State<TruckPage> {
       'tiktok': result['tiktok'] ?? '',
       'youtube': result['youtube'] ?? '',
       'whatsapp': result['whatsapp'] ?? '',
+      'cashApp': result['cashApp'] ?? '',
+      'zelle': result['zelle'] ?? '',
+      'venmo': result['venmo'] ?? '',
       'dailySpecial': 'New business added on MapMyBite',
     };
 

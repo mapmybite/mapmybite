@@ -325,7 +325,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
     return _selectedMenuCart.entries
         .map((entry) => '${entry.value} x ${entry.key}')
-        .join(', ');
+        .join('\n');
+  }
+
+  List<MapEntry<String, int>> _selectedCartEntries() {
+    return _selectedMenuCart.entries.toList();
   }
 
   String _selectedTotalQuantityText() {
@@ -370,7 +374,94 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       ),
     );
   }
+  Widget _buildSelectedMenuItemsCard({
+    required VoidCallback onClear,
+    bool compact = false,
+  }) {
+    if (_selectedMenuCart.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
+    final entries = _selectedCartEntries();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(compact ? 10 : 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Selected Menu Items',
+            style: TextStyle(
+              fontSize: compact ? 14 : 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: compact ? 8 : 10),
+          ...List.generate(entries.length, (index) {
+            final item = entries[index];
+            return Container(
+              margin: EdgeInsets.only(bottom: index == entries.length - 1 ? 0 : 8),
+              padding: EdgeInsets.only(bottom: index == entries.length - 1 ? 0 : 8),
+              decoration: BoxDecoration(
+                border: index == entries.length - 1
+                    ? null
+                    : Border(
+                  bottom: BorderSide(color: Colors.orange.shade200),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.key,
+                      style: TextStyle(
+                        fontSize: compact ? 13.5 : 14.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'x${item.value}',
+                    style: TextStyle(
+                      fontSize: compact ? 13 : 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          SizedBox(height: compact ? 8 : 10),
+          Text(
+            'Total items: ${_selectedTotalQuantity()}   •   Total: \$${_selectedMenuTotal.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: compact ? 12.5 : 13.5,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onClear,
+              icon: const Icon(Icons.clear),
+              label: const Text('Clear Selection'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   Future<void> _showOrderSummaryDialog({
     required BuildContext bottomSheetContext,
     required bool isKitchen,
@@ -582,55 +673,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                     ),
                     const SizedBox(height: 18),
                     if (_selectedMenuCart.isNotEmpty) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange.shade200),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Selected Menu Items',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _selectedItemsText(),
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Total items: ${_selectedTotalQuantity()}   •   Total: \$${_selectedMenuTotal.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade700,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton.icon(
-                                onPressed: () {
-                                  _clearSelectedMenuCart();
-                                  setModalState(() {
-                                    itemsController.text = '';
-                                    quantityController.text = '';
-                                  });
-                                },
-                                icon: const Icon(Icons.clear),
-                                label: const Text('Clear Selection'),
-                              ),
-                            ),
-                          ],
-                        ),
+                      _buildSelectedMenuItemsCard(
+                        onClear: () {
+                          _clearSelectedMenuCart();
+                          setModalState(() {
+                            itemsController.text = '';
+                            quantityController.text = '';
+                          });
+                        },
                       ),
                       const SizedBox(height: 12),
                     ],
@@ -1457,11 +1507,46 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _selectedItemsText(),
-                        style: const TextStyle(fontSize: 14),
+                      const SizedBox(height: 8),
+
+                      ..._selectedMenuCart.entries.map(
+                            (entry) => Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Colors.green.shade200,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  entry.key,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'x${entry.value}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade800,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
+
                       const SizedBox(height: 4),
                       Text(
                         'Total items: ${_selectedTotalQuantity()}   •   Total: \$${_selectedMenuTotal.toStringAsFixed(2)}',

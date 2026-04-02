@@ -112,16 +112,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   }
 
   bool _storyIsActive(String createdAt) {
-    if (createdAt
-        .trim()
-        .isEmpty) return true;
+    if (createdAt.trim().isEmpty) return true;
 
     try {
       final DateTime createdTime = DateTime.parse(createdAt);
-      return DateTime
-          .now()
-          .difference(createdTime)
-          .inHours < 24;
+      return DateTime.now().difference(createdTime).inHours < 24;
     } catch (_) {
       return true;
     }
@@ -149,11 +144,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     return path.startsWith('/') || path.contains(r':\');
   }
 
-  Widget _buildImage(String path, {
-    double? width,
-    double? height,
-    BoxFit fit = BoxFit.cover,
-  }) {
+  Widget _buildImage(
+      String path, {
+        double? width,
+        double? height,
+        BoxFit fit = BoxFit.cover,
+      }) {
     if (_isFilePath(path)) {
       return Image.file(
         File(path),
@@ -326,59 +322,6 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   }
 
   String _selectedItemsText() {
-    if (_selectedOrderItems.isNotEmpty) {
-      return _selectedOrderItems.map((item) {
-        final String name = (item['name'] ?? '').toString();
-        final int quantity = item['quantity'] is num
-            ? (item['quantity'] as num).toInt()
-            : 0;
-
-        final List<String> removedOptions =
-        (item['removedOptions'] is List)
-            ? (item['removedOptions'] as List)
-            .map((e) => e.toString())
-            .where((e) => e.isNotEmpty)
-            .toList()
-            : [];
-
-        final List<Map<String, dynamic>> selectedAddOns =
-        (item['selectedAddOns'] is List)
-            ? (item['selectedAddOns'] as List)
-            .whereType<Map>()
-            .map<Map<String, dynamic>>(
-              (e) => e.map(
-                (key, value) => MapEntry(key.toString(), value),
-          ),
-        )
-            .toList()
-            : [];
-
-        final String notes = (item['notes'] ?? '').toString().trim();
-
-        final List<String> extraLines = [];
-
-        if (removedOptions.isNotEmpty) {
-          extraLines.add('No ${removedOptions.join(', ')}');
-        }
-
-        if (selectedAddOns.isNotEmpty) {
-          extraLines.add(
-            '+ ${selectedAddOns.map((e) => e['name'].toString()).join(', ')}',
-          );
-        }
-
-        if (notes.isNotEmpty) {
-          extraLines.add('Note: $notes');
-        }
-
-        if (extraLines.isEmpty) {
-          return '$quantity x $name';
-        }
-
-        return '$quantity x $name\n  ${extraLines.join('\n  ')}';
-      }).join('\n\n');
-    }
-
     if (_selectedMenuCart.isEmpty) return '';
 
     return _selectedMenuCart.entries
@@ -411,7 +354,6 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   void _clearSelectedMenuCart() {
     setState(() {
       _selectedMenuCart = {};
-      _selectedOrderItems = [];
       _selectedMenuTotal = 0.0;
     });
   }
@@ -433,7 +375,6 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       ),
     );
   }
-
   Widget _buildSelectedMenuItemsCard({
     required VoidCallback onClear,
     bool compact = false,
@@ -466,10 +407,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
           ...List.generate(entries.length, (index) {
             final item = entries[index];
             return Container(
-              margin: EdgeInsets.only(
-                  bottom: index == entries.length - 1 ? 0 : 8),
-              padding: EdgeInsets.only(
-                  bottom: index == entries.length - 1 ? 0 : 8),
+              margin: EdgeInsets.only(bottom: index == entries.length - 1 ? 0 : 8),
+              padding: EdgeInsets.only(bottom: index == entries.length - 1 ? 0 : 8),
               decoration: BoxDecoration(
                 border: index == entries.length - 1
                     ? null
@@ -504,8 +443,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
           }),
           SizedBox(height: compact ? 8 : 10),
           Text(
-            'Total items: ${_selectedTotalQuantity()}   •   Total: \$${_selectedMenuTotal
-                .toStringAsFixed(2)}',
+            'Total items: ${_selectedTotalQuantity()}   •   Total: \$${_selectedMenuTotal.toStringAsFixed(2)}',
             style: TextStyle(
               fontSize: compact ? 12.5 : 13.5,
               color: Colors.grey.shade700,
@@ -525,7 +463,6 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       ),
     );
   }
-
   Future<void> _showOrderSummaryDialog({
     required BuildContext bottomSheetContext,
     required bool isKitchen,
@@ -541,8 +478,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       context: bottomSheetContext,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(
-              isKitchen ? 'Confirm Pre-Order' : 'Confirm Order Request'),
+          title: Text(isKitchen ? 'Confirm Pre-Order' : 'Confirm Order Request'),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -555,7 +491,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 _buildSummaryRow('Phone', phone),
                 _buildSummaryRow('Items', items),
                 _buildSummaryRow('Quantity', quantity),
-                if (_selectedMenuCart.isNotEmpty)
+              if (_selectedMenuCart.isNotEmpty) ...[
                   _buildSummaryRow(
                     'Estimated Total',
                     '\$${_selectedMenuTotal.toStringAsFixed(2)}',
@@ -567,9 +503,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 ),
                 _buildSummaryRow(
                   'Notes',
-                  notes
-                      .trim()
-                      .isEmpty ? 'No notes' : notes,
+                  notes.trim().isEmpty ? 'No notes' : notes,
                 ),
               ],
             ),
@@ -691,8 +625,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
             String dateText() {
               if (selectedDate == null) return 'Select Date';
-              return '${selectedDate!.month}/${selectedDate!
-                  .day}/${selectedDate!.year}';
+              return '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}';
             }
 
             String timeText() {
@@ -701,97 +634,94 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             }
 
             return Padding(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 16,
-                  bottom: MediaQuery
-                      .of(bottomSheetContext)
-                      .viewInsets
-                      .bottom + 20,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                  Center(
-                  child: Container(
-                  width: 50,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade400,
-                      borderRadius: BorderRadius.circular(10),
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isKitchen ? 'Schedule Pre-Order' : 'Build Your Order',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  widget.truck['title'] ?? '',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isKitchen ? Colors.purple : Colors.orange,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                if (_selectedMenuCart.isNotEmpty) ...[
-            _buildSelectedMenuItemsCard(
-            onClear: () {
-            _clearSelectedMenuCart();
-            setModalState(() {
-            itemsController.text = '';
-            quantityController.text = '';
-            });
-            },
-            ),
-            const SizedBox(height: 12),
-            ],
-            TextField(
-            controller: nameController,
-            decoration: InputDecoration(
-            labelText: 'Your Name',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-            controller: phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-            labelText: 'Phone Number',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            ),
-            ),
-            const SizedBox(height: 12),
-            Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-            Row(
-            children: [
-            const Expanded(
-            child: Text(
-            'What would you like to order?',
-            style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            ),
-            ),
-            ),
-            TextButton.icon(
-            onPressed: () async {
+                    const SizedBox(height: 16),
+                    Text(
+                      isKitchen ? 'Schedule Pre-Order' : 'Build Your Order',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.truck['title'] ?? '',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: isKitchen ? Colors.purple : Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    if (_selectedMenuCart.isNotEmpty) ...[
+                      _buildSelectedMenuItemsCard(
+                        onClear: () {
+                          _clearSelectedMenuCart();
+                          setModalState(() {
+                            itemsController.text = '';
+                            quantityController.text = '';
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Your Name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'What would you like to order?',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            TextButton.icon(
+                            onPressed: () async {
             final result = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -802,230 +732,228 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             ),
             );
 
-            if (result == null || result is! Map) return;
+            if (result != null && result is Map) {
+            final dynamic rawCart = result['cart'];
+            final dynamic rawOrderItems = result['orderItems'];
+            final dynamic rawTotal = result['total'];
 
-            final rawCart = result['cart'];
-            final rawTotal = result['total'];
-            final rawOrderItems = result['orderItems'];
-
-            if (rawCart is! Map) return;
-
-            final updatedCart = rawCart.map<String, int>(
+            if (rawCart is Map) {
+            setState(() {
+            _selectedMenuCart = rawCart.map<String, int>(
             (key, value) => MapEntry(
             key.toString(),
             (value as num).toInt(),
             ),
             );
 
-            int totalQty = 0;
-            for (final qty in updatedCart.values) {
-            totalQty += qty;
-            }
+            _selectedOrderItems = rawOrderItems is List
+            ? rawOrderItems
+                .whereType<Map>()
+                .map<Map<String, dynamic>>(
+            (item) => item.map(
+            (key, value) => MapEntry(key.toString(), value),
+            ),
+            )
+                .toList()
+                : [];
 
-            setState(() {
-            _selectedMenuCart = updatedCart;
             _selectedMenuTotal =
             rawTotal is num ? rawTotal.toDouble() : 0.0;
-
-            _selectedOrderItems = rawOrderItems is List
-            ? rawOrderItems.cast<Map<String, dynamic>>()
-                : [];
             });
-
-            itemsController.text =
-            updatedCart.entries.map((e) => '${e.value} x ${e.key}').join(', ');
-
-            quantityController.text = totalQty.toString();
 
             if (!mounted) return;
 
+            itemsController.text = _selectedItemsText();
+            quantityController.text = _selectedTotalQuantityText();
+
             ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-            content: Text('$totalQty item(s) added from menu'),
+            content: Text(
+            '${_selectedTotalQuantity()} item(s) added from menu',
+            ),
             ),
             );
+            }
+            }
             },
             icon: const Icon(Icons.restaurant_menu, size: 18),
             label: const Text('Browse Menu'),
             ),
-            ],
-            ),
-            const SizedBox(height: 8),
-            TextField(
-            controller: itemsController,
-            maxLines: 2,
-            readOnly: _selectedMenuCart.isNotEmpty,
-            decoration: InputDecoration(
-            hintText: _selectedMenuCart.isNotEmpty
-            ? 'Menu items selected'
-                : 'Example: 2 tacos, 1 burrito, 1 mango lassi',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            suffixIcon: _selectedMenuCart.isNotEmpty
-            ? IconButton(
-            onPressed: () {
-            _clearSelectedMenuCart();
-            setModalState(() {
-            itemsController.text = '';
-            quantityController.text = '';
-            });
-            },
-            icon: const Icon(Icons.clear),
-            tooltip: 'Clear menu selection',
-            )
-                : null,
-            ),
-            ),
-            ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-            controller: quantityController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-            labelText: 'Quantity',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            ),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-            onPressed: pickDate,
-            icon: const Icon(Icons.calendar_today),
-            label: Text(dateText()),
-            style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            ),
-            ),
-            ),
-            const SizedBox(height: 12),
-            isKitchen
-            ? DropdownButtonFormField<String>(
-            value: selectedTimeSlot,
-            decoration: InputDecoration(
-            labelText: 'Select Time Slot',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            ),
-            items: kitchenTimeSlots.map((slot) {
-            return DropdownMenuItem<String>(
-            value: slot,
-            child: Text(slot),
-            );
-            }).toList(),
-            onChanged: (value) {
-            setModalState(() {
-            selectedTimeSlot = value;
-            });
-            },
-            )
-                : SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-            onPressed: pickTime,
-            icon: const Icon(Icons.access_time),
-            label: Text(timeText()),
-            style: OutlinedButton.styleFrom(
-            padding:
-            const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            ),
-            ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-            isKitchen
-            ? 'Choose your preferred pickup date and available time slot.'
-                : 'Choose your preferred pickup date and time.',
-            style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey.shade700,
-            ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-            controller: notesController,
-            maxLines: 3,
-            decoration: InputDecoration(
-            labelText: 'Notes',
-            hintText: 'Spicy level, no onions, extra sauce, etc.',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            ),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-            onPressed: () async {
-            final bool missingRequired =
-            nameController.text.trim().isEmpty ||
-            phoneController.text.trim().isEmpty ||
-            itemsController.text.trim().isEmpty ||
-            quantityController.text.trim().isEmpty ||
-            selectedDate == null ||
-            (isKitchen
-            ? selectedTimeSlot == null
-                : selectedTime == null);
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: itemsController,
+                          maxLines: 2,
+                          readOnly: _selectedMenuCart.isNotEmpty,
+                          decoration: InputDecoration(
+                            hintText: _selectedMenuCart.isNotEmpty
+                                ? 'Menu items selected'
+                                : 'Example: 2 tacos, 1 burrito, 1 mango lassi',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            suffixIcon: _selectedMenuCart.isNotEmpty
+                                ? IconButton(
+                              onPressed: () {
+                                _clearSelectedMenuCart();
+                                setModalState(() {
+                                  itemsController.text = '';
+                                  quantityController.text = '';
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                              tooltip: 'Clear menu selection',
+                            )
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: quantityController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Quantity',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: pickDate,
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(dateText()),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    isKitchen
+                        ? DropdownButtonFormField<String>(
+                      value: selectedTimeSlot,
+                      decoration: InputDecoration(
+                        labelText: 'Select Time Slot',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      items: kitchenTimeSlots.map((slot) {
+                        return DropdownMenuItem<String>(
+                          value: slot,
+                          child: Text(slot),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setModalState(() {
+                          selectedTimeSlot = value;
+                        });
+                      },
+                    )
+                        : SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: pickTime,
+                        icon: const Icon(Icons.access_time),
+                        label: Text(timeText()),
+                        style: OutlinedButton.styleFrom(
+                          padding:
+                          const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isKitchen
+                          ? 'Choose your preferred pickup date and available time slot.'
+                          : 'Choose your preferred pickup date and time.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notesController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Notes',
+                        hintText: 'Spicy level, no onions, extra sauce, etc.',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final bool missingRequired =
+                              nameController.text.trim().isEmpty ||
+                                  phoneController.text.trim().isEmpty ||
+                                  itemsController.text.trim().isEmpty ||
+                                  quantityController.text.trim().isEmpty ||
+                                  selectedDate == null ||
+                                  (isKitchen
+                                      ? selectedTimeSlot == null
+                                      : selectedTime == null);
 
-            if (missingRequired) {
-            ScaffoldMessenger.of(this.context).showSnackBar(
-            const SnackBar(
-            content: Text(
-            'Please fill all required fields and select date and time',
-            ),
-            ),
-            );
-            return;
-            }
+                          if (missingRequired) {
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please fill all required fields and select date and time',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
 
-            final String finalDateText =
-            '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}';
-            final String finalTimeText = isKitchen
-            ? selectedTimeSlot!
-                : selectedTime!.format(this.context);
+                          final String finalDateText =
+                              '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}';
+                          final String finalTimeText = isKitchen
+                              ? selectedTimeSlot!
+                              : selectedTime!.format(this.context);
 
-            await _showOrderSummaryDialog(
-            bottomSheetContext: bottomSheetContext,
-            isKitchen: isKitchen,
-            customerName: nameController.text.trim(),
-            phone: phoneController.text.trim(),
-            items: itemsController.text.trim(),
-            quantity: quantityController.text.trim(),
-            dateText: finalDateText,
-            timeText: finalTimeText,
-            notes: notesController.text.trim(),
-            );
-            },
-            icon: const Icon(Icons.receipt_long),
-            label: const Text('Review Order Summary'),
-            style: ElevatedButton.styleFrom(
-            backgroundColor:
-            isKitchen ? Colors.purple : Colors.orange,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            ),
-            ),
-            ),
-            const SizedBox(height: 10),
-            ],
-            ),
-            )
-            ,
+                          await _showOrderSummaryDialog(
+                            bottomSheetContext: bottomSheetContext,
+                            isKitchen: isKitchen,
+                            customerName: nameController.text.trim(),
+                            phone: phoneController.text.trim(),
+                            items: itemsController.text.trim(),
+                            quantity: quantityController.text.trim(),
+                            dateText: finalDateText,
+                            timeText: finalTimeText,
+                            notes: notesController.text.trim(),
+                          );
+                        },
+                        icon: const Icon(Icons.receipt_long),
+                        label: const Text('Review Order Summary'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                          isKitchen ? Colors.purple : Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
             );
           },
         );
@@ -1077,16 +1005,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     final List<String> galleryImages = _buildGalleryImages();
     final List<StoryItem> stories = _buildStoryItems();
 
-    final String imagePath = (widget.truck['image'] ?? '')
-        .toString()
-        .isNotEmpty
+    final String imagePath = (widget.truck['image'] ?? '').toString().isNotEmpty
         ? (widget.truck['image'] ?? '').toString()
         : (galleryImages.isNotEmpty ? galleryImages.first : '');
 
     final String timingText = _buildTimingText();
-    final bool isOpen = timingText.contains('-')
-        ? _isOpenNow(timingText)
-        : false;
+    final bool isOpen = timingText.contains('-') ? _isOpenNow(timingText) : false;
 
     final String instagram = (widget.truck['instagram'] ?? '').toString();
     final String facebook = (widget.truck['facebook'] ?? '').toString();
@@ -1163,12 +1087,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            FullScreenStoryViewerPage(
-                              stories: stories,
-                              initialIndex: 0,
-                              title: widget.truck['title'] ?? 'Story',
-                            ),
+                        builder: (_) => FullScreenStoryViewerPage(
+                          stories: stories,
+                          initialIndex: 0,
+                          title: widget.truck['title'] ?? 'Story',
+                        ),
                       ),
                     );
                   },
@@ -1253,11 +1176,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                   ),
                   ElevatedButton.icon(
                     onPressed: () async {
-                      final String phone = (widget.truck['phone'] ?? '')
-                          .toString();
-                      if (phone
-                          .trim()
-                          .isEmpty) {
+                      final String phone = (widget.truck['phone'] ?? '').toString();
+                      if (phone.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Phone number not available'),
@@ -1316,11 +1236,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                                 Color(0xFFE1306C),
                                 Color(0xFFFCAF45),
                               ],
-                              onTap: () =>
-                                  _openSocialLink(
-                                    instagram,
-                                    platform: 'instagram',
-                                  ),
+                              onTap: () => _openSocialLink(
+                                instagram,
+                                platform: 'instagram',
+                              ),
                             ),
                           if (facebook.isNotEmpty)
                             _buildPremiumSocialIcon(
@@ -1330,11 +1249,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                                 Color(0xFF1877F2),
                                 Color(0xFF0A58CA),
                               ],
-                              onTap: () =>
-                                  _openSocialLink(
-                                    facebook,
-                                    platform: 'facebook',
-                                  ),
+                              onTap: () => _openSocialLink(
+                                facebook,
+                                platform: 'facebook',
+                              ),
                             ),
                           if (tiktok.isNotEmpty)
                             _buildPremiumSocialIcon(
@@ -1345,11 +1263,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                                 Color(0xFF25F4EE),
                                 Color(0xFFFE2C55),
                               ],
-                              onTap: () =>
-                                  _openSocialLink(
-                                    tiktok,
-                                    platform: 'tiktok',
-                                  ),
+                              onTap: () => _openSocialLink(
+                                tiktok,
+                                platform: 'tiktok',
+                              ),
                             ),
                           if (youtube.isNotEmpty)
                             _buildPremiumSocialIcon(
@@ -1359,11 +1276,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                                 Color(0xFFFF0000),
                                 Color(0xFFCC0000),
                               ],
-                              onTap: () =>
-                                  _openSocialLink(
-                                    youtube,
-                                    platform: 'youtube',
-                                  ),
+                              onTap: () => _openSocialLink(
+                                youtube,
+                                platform: 'youtube',
+                              ),
                             ),
                           if (whatsapp.isNotEmpty)
                             _buildPremiumSocialIcon(
@@ -1460,11 +1376,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              FullScreenGalleryPage(
-                                images: galleryImages,
-                                initialIndex: index,
-                              ),
+                          builder: (_) => FullScreenGalleryPage(
+                            images: galleryImages,
+                            initialIndex: index,
+                          ),
                         ),
                       );
                     },
@@ -1526,42 +1441,70 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MenuPage(truck: widget.truck),
-                      ),
-                    );
+    child: ElevatedButton.icon(
+    onPressed: () async {
+    final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+    builder: (_) => MenuPage(
+    truck: widget.truck,
+    isOwnerView: false,
+    ),
+    ),
+    );
 
-                    if (result != null && result is Map) {
-                      final dynamic rawCart = result['cart'];
-                      final dynamic rawTotal = result['total'];
+    if (result != null && result is Map) {
+    final dynamic rawCart = result['cart'];
+    final dynamic rawOrderItems = result['orderItems'];
+    final dynamic rawTotal = result['total'];
 
-                      if (rawCart is Map) {
-                        setState(() {
-                          _selectedMenuCart = rawCart.map<String, int>(
-                                (key, value) =>
-                                MapEntry(
-                                  key.toString(),
-                                  (value as num).toInt(),
-                                ),
-                          );
-                          _selectedMenuTotal =
-                          rawTotal is num ? rawTotal.toDouble() : 0.0;
-                        });
+    if (rawCart is Map) {
+    setState(() {
+    _selectedMenuCart = rawCart.map<String, int>(
+    (key, value) => MapEntry(
+    key.toString(),
+    (value as num).toInt(),
+    ),
+    );
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '${_selectedTotalQuantity()} item(s) added from menu',
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                  },
+    _selectedOrderItems = rawOrderItems is List
+    ? rawOrderItems
+        .whereType<Map>()
+        .map<Map<String, dynamic>>(
+    (item) => item.map(
+    (key, value) => MapEntry(key.toString(), value),
+    ),
+    )
+        .toList()
+        : [];
+
+    _selectedMenuTotal =
+    rawTotal is num ? rawTotal.toDouble() : 0.0;
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+    content: Text(
+    '${_selectedTotalQuantity()} item(s) added from menu',
+    ),
+    ),
+    );
+    }
+    }
+    },
+    icon: const Icon(Icons.restaurant_menu),
+    label: const Text('View Full Menu'),
+    style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.orange,
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+    ),
+    ),
+    ),
                   icon: const Icon(Icons.restaurant_menu),
                   label: const Text('View Full Menu'),
                   style: ElevatedButton.styleFrom(
@@ -1601,48 +1544,46 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       const SizedBox(height: 8),
 
                       ..._selectedMenuCart.entries.map(
-                            (entry) =>
-                            Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  bottom: BorderSide(
-                                    color: Colors.green.shade200,
+                            (entry) => Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Colors.green.shade200,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  entry.key,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      entry.key,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'x${entry.value}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade800,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                              const SizedBox(width: 10),
+                              Text(
+                                'x${entry.value}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade800,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
+                            ],
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 4),
                       Text(
-                        'Total items: ${_selectedTotalQuantity()}   •   Total: \$${_selectedMenuTotal
-                            .toStringAsFixed(2)}',
+                        'Total items: ${_selectedTotalQuantity()}   •   Total: \$${_selectedMenuTotal.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade700,
@@ -1893,10 +1834,7 @@ class _FullScreenStoryViewerPageState extends State<FullScreenStoryViewerPage> {
                   ? GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapUp: (details) async {
-                  final screenWidth = MediaQuery
-                      .of(context)
-                      .size
-                      .width;
+                  final screenWidth = MediaQuery.of(context).size.width;
                   final dx = details.localPosition.dx;
 
                   if (dx < screenWidth * 0.3) {

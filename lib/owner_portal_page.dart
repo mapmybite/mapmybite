@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
+
 import 'owner_menu_editor_page.dart';
 
 class OwnerPortalPage extends StatefulWidget {
@@ -14,6 +16,7 @@ class OwnerPortalPage extends StatefulWidget {
 
 class _OwnerPortalPageState extends State<OwnerPortalPage> {
   String businessType = 'food_truck';
+  String selectedPlan = 'free';
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController cuisineController = TextEditingController();
@@ -39,11 +42,42 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   File? bannerImage;
   List<File> galleryImages = [];
   List<Map<String, dynamic>> ownerMenuItems = [];
-
-  final int maxGalleryImages = 15;
-  final int maxStoryVideos = 5;
-
   List<StoryVideoItem> storyVideos = [];
+
+  int get _galleryLimit {
+    switch (selectedPlan) {
+      case 'pro':
+        return 6;
+      case 'premium':
+        return 10;
+      case 'platinum':
+        return 15;
+      case 'free':
+      default:
+        return 3;
+    }
+  }
+
+  int get _storyLimit {
+    switch (selectedPlan) {
+      case 'pro':
+        return 1;
+      case 'premium':
+      case 'platinum':
+        return 5;
+      case 'free':
+      default:
+        return 0;
+    }
+  }
+
+  String get _galleryTitle {
+    return 'Food Gallery (up to $_galleryLimit photos)';
+  }
+
+  String get _storyTitle {
+    return 'Story Videos (up to $_storyLimit)';
+  }
 
   @override
   void dispose() {
@@ -74,7 +108,10 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   }
 
   Future<void> pickBannerImage() async {
-    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
 
     if (picked != null) {
       setState(() {
@@ -90,17 +127,40 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   }
 
   Future<void> pickGalleryImages() async {
-    final List<XFile> pickedFiles = await _picker.pickMultiImage();
+    final int galleryLimit = _galleryLimit;
 
-    if (pickedFiles.isNotEmpty) {
-      setState(() {
-        final List<File> newFiles =
-        pickedFiles.map((file) => File(file.path)).toList();
+    if (galleryImages.length >= galleryLimit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Your $selectedPlan plan allows up to $galleryLimit gallery photos',
+          ),
+        ),
+      );
+      return;
+    }
 
-        galleryImages = [...galleryImages, ...newFiles]
-            .take(maxGalleryImages)
-            .toList();
-      });
+    final List<XFile> pickedFiles = await _picker.pickMultiImage(
+      imageQuality: 80,
+    );
+
+    if (pickedFiles.isEmpty) return;
+
+    setState(() {
+      final List<File> newFiles =
+      pickedFiles.map((file) => File(file.path)).toList();
+
+      galleryImages = [...galleryImages, ...newFiles].take(galleryLimit).toList();
+    });
+
+    if (galleryImages.length >= galleryLimit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Reached $galleryLimit gallery photos for $selectedPlan plan',
+          ),
+        ),
+      );
     }
   }
 
@@ -111,10 +171,16 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   }
 
   Future<void> addStoryVideo() async {
-    if (storyVideos.length >= maxStoryVideos) {
+    final int storyLimit = _storyLimit;
+
+    if (storyVideos.length >= storyLimit) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('You can upload up to $maxStoryVideos story videos'),
+          content: Text(
+            storyLimit == 0
+                ? 'Upgrade your plan to add story videos'
+                : 'Your $selectedPlan plan allows up to $storyLimit story videos',
+          ),
         ),
       );
       return;
@@ -218,23 +284,21 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
         ownerMenuItems = result
             .whereType<Map>()
             .map<Map<String, dynamic>>(
-              (item) => {
-            'name': (item['name'] ?? '').toString(),
-            'price': item['price'] ?? 0.0,
-            'category': (item['category'] ?? 'Main Items').toString(),
-          },
+              (item) => item.map(
+                (key, value) => MapEntry(key.toString(), value),
+          ),
         )
             .toList();
 
         menuController.text = ownerMenuItems
-            .map((item) => item['name'].toString())
+            .map((item) => (item['name'] ?? '').toString())
             .where((name) => name.trim().isNotEmpty)
             .join(', ');
       });
     }
   }
 
-  void _submitForm() {
+  Future<void> _submitForm() async {
     if (nameController.text.trim().isEmpty ||
         cuisineController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -247,6 +311,35 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
         ),
       );
       return;
+    }
+
+    if (addressController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid address'),
+        ),
+      );
+      return;
+    }
+
+    double latitude = 37.9577;
+    double longitude = -121.2908;
+
+    try {
+      final locations = await locationFromAddress(addressController.text.trim());
+
+      if (locations.isNotEmpty) {
+        latitude = locations.first.latitude;
+        longitude = locations.first.longitude;
+      }
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not find exact address. Using default location instead.',
+          ),
+        ),
+      );
     }
 
     final List<Map<String, dynamic>> storyVideoMaps = storyVideos
@@ -262,38 +355,37 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     final Map<String, dynamic> newBusiness = {
       'id': DateTime.now().millisecondsSinceEpoch.toString(),
       'type': businessType,
+      'plan': selectedPlan,
       'title': nameController.text.trim(),
       'cuisine': cuisineController.text.trim(),
       'address': addressController.text.trim(),
+      'latitude': latitude,
+      'longitude': longitude,
       'openTime': openTimeController.text.trim(),
       'closeTime': closeTimeController.text.trim(),
       'phone': phoneController.text.trim(),
       'whatsapp': whatsappController.text.trim(),
-
       'cashApp': cashAppController.text.trim(),
       'zelle': zelleController.text.trim(),
       'venmo': venmoController.text.trim(),
-
       'menu': menuController.text.trim(),
       'menuItems': ownerMenuItems,
       'description': descriptionController.text.trim(),
-
       'image': bannerImage?.path ?? '',
       'bannerImage': bannerImage?.path ?? '',
       'galleryImages': galleryImages.map((e) => e.path).toList(),
-
       'storyVideos': storyVideoMaps,
       'storyVideo': storyVideos.isNotEmpty ? storyVideos.first.file.path : '',
       'storyCreatedAt': storyVideos.isNotEmpty
           ? storyVideos.first.createdAt?.toIso8601String()
           : '',
-
       'instagram': instagramController.text.trim(),
       'facebook': facebookController.text.trim(),
       'tiktok': tiktokController.text.trim(),
       'youtube': youtubeController.text.trim(),
     };
 
+    if (!mounted) return;
     Navigator.pop(context, newBusiness);
   }
 
@@ -344,7 +436,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
           height: 120,
           decoration: BoxDecoration(
             color: isSelected
-                ? activeColor.withOpacity(0.18)
+                ? activeColor.withValues(alpha: 0.18)
                 : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
@@ -437,7 +529,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                   runSpacing: 8,
                   children: ownerMenuItems.take(8).map((item) {
                     return Chip(
-                      label: Text(item['name'].toString()),
+                      label: Text((item['name'] ?? '').toString()),
                     );
                   }).toList(),
                 ),
@@ -525,12 +617,12 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Food Gallery (up to 15 photos)'),
+        _buildSectionTitle(_galleryTitle),
         const SizedBox(height: 10),
         ElevatedButton.icon(
           onPressed: pickGalleryImages,
           icon: const Icon(Icons.photo_library),
-          label: Text('Add Photos (${galleryImages.length}/$maxGalleryImages)'),
+          label: Text('Add Photos (${galleryImages.length}/$_galleryLimit)'),
         ),
         const SizedBox(height: 12),
         if (galleryImages.isNotEmpty)
@@ -586,10 +678,14 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Story Videos (3 to 5 recommended, max 5)'),
+        _buildSectionTitle(_storyTitle),
         const SizedBox(height: 6),
         Text(
-          'Owners can add, replace, or delete story videos. Stories stay active for 24 hours.',
+          _storyLimit == 0
+              ? 'Free plan does not include customer story videos. Upgrade to Pro or higher.'
+              : _storyLimit == 1
+              ? 'Your current plan allows 1 story video.'
+              : 'Owners can add, replace, or delete story videos. Stories stay active for 24 hours.',
           style: TextStyle(
             color: Colors.grey.shade700,
             fontSize: 13,
@@ -597,9 +693,9 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
         ),
         const SizedBox(height: 10),
         ElevatedButton.icon(
-          onPressed: storyVideos.length >= maxStoryVideos ? null : addStoryVideo,
+          onPressed: storyVideos.length >= _storyLimit ? addStoryVideo : addStoryVideo,
           icon: const Icon(Icons.video_library),
-          label: Text('Add Story Video (${storyVideos.length}/$maxStoryVideos)'),
+          label: Text('Add Story Video (${storyVideos.length}/$_storyLimit)'),
         ),
         const SizedBox(height: 14),
         if (storyVideos.isNotEmpty)
@@ -748,6 +844,95 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     );
   }
 
+  Widget _buildPlanSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Plan'),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          initialValue: selectedPlan,
+          decoration: InputDecoration(
+            labelText: 'Choose Plan',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 16,
+            ),
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: 'free',
+              child: Text('Free'),
+            ),
+            DropdownMenuItem(
+              value: 'pro',
+              child: Text('Pro - \$9.99/month'),
+            ),
+            DropdownMenuItem(
+              value: 'premium',
+              child: Text('Premium - \$15.99/month'),
+            ),
+            DropdownMenuItem(
+              value: 'platinum',
+              child: Text('Platinum - \$59.99 founding plan'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+
+            setState(() {
+              selectedPlan = value;
+
+              if (galleryImages.length > _galleryLimit) {
+                galleryImages = galleryImages.take(_galleryLimit).toList();
+              }
+
+              if (storyVideos.length > _storyLimit) {
+                final removedStories = storyVideos.skip(_storyLimit).toList();
+                storyVideos = storyVideos.take(_storyLimit).toList();
+
+                for (final story in removedStories) {
+                  story.controller?.dispose();
+                }
+
+                for (int i = 0; i < storyVideos.length; i++) {
+                  storyVideos[i] =
+                      storyVideos[i].copyWith(label: 'Story ${i + 1}');
+                }
+              }
+            });
+          },
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.orange.shade200),
+          ),
+          child: Text(
+            selectedPlan == 'free'
+                ? 'Free: 1 banner photo, up to 3 gallery photos, text menu for customers, local menu photos for owner device only.'
+                : selectedPlan == 'pro'
+                ? 'Pro: unlock more customer-visible media, up to 10 menu photos, and 1 story video.'
+                : selectedPlan == 'premium'
+                ? 'Premium: unlock up to 25 menu photos and up to 5 story videos for customers.'
+                : 'Platinum: unlock all premium features plus verification eligibility and founding price lock.',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String nameHint =
@@ -866,6 +1051,8 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
               hintText: 'WhatsApp number',
               controller: whatsappController,
             ),
+            const SizedBox(height: 16),
+            _buildPlanSection(),
             const SizedBox(height: 16),
             _buildSectionTitle('Payment Methods (Optional)'),
             const SizedBox(height: 10),

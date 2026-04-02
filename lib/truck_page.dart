@@ -235,14 +235,21 @@ class _TruckPageState extends State<TruckPage> {
     );
 
     if (result == null) return;
+    if (!mounted) return;
 
     final bool isFoodTruck = result['type'] == 'food_truck';
+
+    final double latitude = ((result['latitude'] ?? 37.9577) as num).toDouble();
+    final double longitude =
+    ((result['longitude'] ?? -121.2908) as num).toDouble();
 
     final Map<String, dynamic> newBusiness = {
       'id': result['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
       'title': result['title'] ?? '',
       'cuisine': result['cuisine'] ?? '',
-      'position': _generateNewBusinessPosition(isFoodTruck),
+      'position': LatLng(latitude, longitude),
+      'latitude': latitude,
+      'longitude': longitude,
       'type': isFoodTruck ? 'truck' : 'kitchen',
       'phone': result['phone'] ?? '',
       'timing': _buildTimingFromResult(result),
@@ -290,17 +297,6 @@ class _TruckPageState extends State<TruckPage> {
     _openProfilePage(newBusiness);
   }
 
-  LatLng _generateNewBusinessPosition(bool isFoodTruck) {
-    final int count = isFoodTruck ? foodTrucks.length : homeKitchens.length;
-    final double latOffset = 0.004 + (count * 0.0015);
-    final double lngOffset = 0.004 + (count * 0.0012);
-
-    return LatLng(
-      _initialPosition.latitude + latOffset,
-      _initialPosition.longitude + lngOffset,
-    );
-  }
-
   String _buildTimingFromResult(Map<String, dynamic> result) {
     final String openTime = (result['openTime'] ?? '').toString().trim();
     final String closeTime = (result['closeTime'] ?? '').toString().trim();
@@ -343,7 +339,8 @@ class _TruckPageState extends State<TruckPage> {
   }
 
   String _pickMainImage(Map<String, dynamic> result) {
-    final List<String> gallery = _normalizeGalleryImages(result['galleryImages']);
+    final List<String> gallery =
+    _normalizeGalleryImages(result['galleryImages']);
     if (gallery.isNotEmpty) return gallery.first;
     return '';
   }
@@ -355,7 +352,12 @@ class _TruckPageState extends State<TruckPage> {
       markers.add(
         Marker(
           markerId: MarkerId(truck['id']),
-          position: truck['position'],
+          position: truck['position'] is LatLng
+              ? truck['position'] as LatLng
+              : LatLng(
+            ((truck['latitude'] ?? 37.9577) as num).toDouble(),
+            ((truck['longitude'] ?? -121.2908) as num).toDouble(),
+          ),
           icon: truckIcon ?? BitmapDescriptor.defaultMarker,
           infoWindow: InfoWindow(title: truck['title']),
           onTap: () {
@@ -369,7 +371,12 @@ class _TruckPageState extends State<TruckPage> {
       markers.add(
         Marker(
           markerId: MarkerId(kitchen['id']),
-          position: kitchen['position'],
+          position: kitchen['position'] is LatLng
+              ? kitchen['position'] as LatLng
+              : LatLng(
+            ((kitchen['latitude'] ?? 37.9577) as num).toDouble(),
+            ((kitchen['longitude'] ?? -121.2908) as num).toDouble(),
+          ),
           icon: homeKitchenIcon ??
               BitmapDescriptor.defaultMarkerWithHue(
                 BitmapDescriptor.hueViolet,

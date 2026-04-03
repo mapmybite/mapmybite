@@ -37,12 +37,23 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   final TextEditingController zelleController = TextEditingController();
   final TextEditingController venmoController = TextEditingController();
 
+  final TextEditingController legalNameController = TextEditingController();
+  final TextEditingController permitNumberController = TextEditingController();
+  final TextEditingController verificationNotesController =
+  TextEditingController();
+
   final ImagePicker _picker = ImagePicker();
 
   File? bannerImage;
+  File? idFrontImage;
+  File? addressProofImage;
+
   List<File> galleryImages = [];
   List<Map<String, dynamic>> ownerMenuItems = [];
   List<StoryVideoItem> storyVideos = [];
+
+  bool wantsVerification = false;
+  String verificationStatus = 'not_started';
 
   int get _galleryLimit {
     switch (selectedPlan) {
@@ -71,12 +82,25 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     }
   }
 
-  String get _galleryTitle {
-    return 'Food Gallery (up to $_galleryLimit photos)';
+  int get _menuItemLimit {
+    return 25;
   }
 
-  String get _storyTitle {
-    return 'Story Videos (up to $_storyLimit)';
+  String get _galleryTitle => 'Food Gallery (up to $_galleryLimit photos)';
+
+  String get _storyTitle => 'Story Videos (up to $_storyLimit)';
+
+  String get _menuLimitText {
+    if (selectedPlan == 'free') {
+      return 'Up to 25 menu items (without cloud menu photos)';
+    }
+    if (selectedPlan == 'pro') {
+      return 'Up to 25 menu items (first 15 can include menu photos)';
+    }
+    if (selectedPlan == 'premium') {
+      return 'Up to 25 menu items (all 25 can include menu photos)';
+    }
+    return 'All menu features unlocked';
   }
 
   @override
@@ -99,6 +123,10 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     cashAppController.dispose();
     zelleController.dispose();
     venmoController.dispose();
+
+    legalNameController.dispose();
+    permitNumberController.dispose();
+    verificationNotesController.dispose();
 
     for (final story in storyVideos) {
       story.controller?.dispose();
@@ -269,12 +297,51 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     setState(() {});
   }
 
+  Future<void> pickIdFrontImage() async {
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (picked != null) {
+      setState(() {
+        idFrontImage = File(picked.path);
+      });
+    }
+  }
+
+  Future<void> pickAddressProofImage() async {
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (picked != null) {
+      setState(() {
+        addressProofImage = File(picked.path);
+      });
+    }
+  }
+
+  void removeIdFrontImage() {
+    setState(() {
+      idFrontImage = null;
+    });
+  }
+
+  void removeAddressProofImage() {
+    setState(() {
+      addressProofImage = null;
+    });
+  }
+
   Future<void> _openMenuEditor() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => OwnerMenuEditorPage(
           initialMenuItems: ownerMenuItems,
+          selectedPlan: selectedPlan,
         ),
       ),
     );
@@ -288,6 +355,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                 (key, value) => MapEntry(key.toString(), value),
           ),
         )
+            .take(_menuItemLimit)
             .toList();
 
         menuController.text = ownerMenuItems
@@ -295,6 +363,18 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
             .where((name) => name.trim().isNotEmpty)
             .join(', ');
       });
+
+      if (result.length > _menuItemLimit) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _menuItemLimit >= 9999
+                  ? 'Menu saved successfully'
+                  : 'Your $selectedPlan plan allows up to $_menuItemLimit menu items',
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -320,6 +400,22 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
         ),
       );
       return;
+    }
+
+    if (wantsVerification) {
+      if (legalNameController.text.trim().isEmpty ||
+          permitNumberController.text.trim().isEmpty ||
+          idFrontImage == null ||
+          addressProofImage == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Please complete all required verification fields and upload both documents',
+            ),
+          ),
+        );
+        return;
+      }
     }
 
     double latitude = 37.9577;
@@ -356,6 +452,13 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       'id': DateTime.now().millisecondsSinceEpoch.toString(),
       'type': businessType,
       'plan': selectedPlan,
+      'isVerified': false,
+      'verificationStatus': wantsVerification ? 'pending' : 'not_started',
+      'legalName': legalNameController.text.trim(),
+      'permitNumber': permitNumberController.text.trim(),
+      'verificationNotes': verificationNotesController.text.trim(),
+      'idFrontImage': idFrontImage?.path ?? '',
+      'addressProofImage': addressProofImage?.path ?? '',
       'title': nameController.text.trim(),
       'cuisine': cuisineController.text.trim(),
       'address': addressController.text.trim(),
@@ -369,7 +472,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       'zelle': zelleController.text.trim(),
       'venmo': venmoController.text.trim(),
       'menu': menuController.text.trim(),
-      'menuItems': ownerMenuItems,
+      'menuItems': ownerMenuItems.take(_menuItemLimit).toList(),
       'description': descriptionController.text.trim(),
       'image': bannerImage?.path ?? '',
       'bannerImage': bannerImage?.path ?? '',
@@ -482,7 +585,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Menu Setup'),
+        _buildSectionTitle('Menu Setup ($_menuLimitText)'),
         const SizedBox(height: 10),
         SizedBox(
           width: double.infinity,
@@ -517,7 +620,9 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${ownerMenuItems.length} menu items added',
+                  _menuItemLimit >= 9999
+                      ? '${ownerMenuItems.length} menu items added'
+                      : '${ownerMenuItems.length}/$_menuItemLimit menu items added',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -682,7 +787,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
         const SizedBox(height: 6),
         Text(
           _storyLimit == 0
-              ? 'Free plan does not include customer story videos. Upgrade to Pro or higher.'
+              ? 'Free plan does not include customer story videos.'
               : _storyLimit == 1
               ? 'Your current plan allows 1 story video.'
               : 'Owners can add, replace, or delete story videos. Stories stay active for 24 hours.',
@@ -693,7 +798,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
         ),
         const SizedBox(height: 10),
         ElevatedButton.icon(
-          onPressed: storyVideos.length >= _storyLimit ? addStoryVideo : addStoryVideo,
+          onPressed: addStoryVideo,
           icon: const Icon(Icons.video_library),
           label: Text('Add Story Video (${storyVideos.length}/$_storyLimit)'),
         ),
@@ -844,6 +949,150 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     );
   }
 
+  Widget _buildVerificationSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Verification'),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.blue.shade100),
+          ),
+          child: Text(
+            selectedPlan == 'free'
+                ? 'Free accounts can unlock in-app ordering and POS after verification approval.'
+                : 'Paid accounts can request verification to receive a verified badge.',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SwitchListTile(
+          value: wantsVerification,
+          onChanged: (value) {
+            setState(() {
+              wantsVerification = value;
+              verificationStatus = value ? 'pending' : 'not_started';
+            });
+          },
+          title: const Text('Apply for verification'),
+          subtitle: Text(
+            wantsVerification
+                ? 'Your verification request will be saved as pending.'
+                : 'Turn on to submit verification details',
+          ),
+          contentPadding: EdgeInsets.zero,
+        ),
+        if (wantsVerification) ...[
+          _buildTextField(
+            icon: Icons.badge,
+            hintText: 'Legal Full Name',
+            controller: legalNameController,
+          ),
+          _buildTextField(
+            icon: Icons.verified_user,
+            hintText: 'Permit / License Number',
+            controller: permitNumberController,
+          ),
+          _buildTextField(
+            icon: Icons.notes,
+            hintText: 'Verification Notes (optional)',
+            controller: verificationNotesController,
+            maxLines: 3,
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              ElevatedButton.icon(
+                onPressed: pickIdFrontImage,
+                icon: const Icon(Icons.photo_camera_front),
+                label: Text(
+                  idFrontImage == null ? 'Upload ID Photo' : 'Replace ID Photo',
+                ),
+              ),
+              if (idFrontImage != null)
+                OutlinedButton.icon(
+                  onPressed: removeIdFrontImage,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete ID'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (idFrontImage != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                idFrontImage!,
+                height: 130,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              ElevatedButton.icon(
+                onPressed: pickAddressProofImage,
+                icon: const Icon(Icons.home_work_outlined),
+                label: Text(
+                  addressProofImage == null
+                      ? 'Upload Address Proof'
+                      : 'Replace Address Proof',
+                ),
+              ),
+              if (addressProofImage != null)
+                OutlinedButton.icon(
+                  onPressed: removeAddressProofImage,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete Proof'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (addressProofImage != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                addressProofImage!,
+                height: 130,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Text(
+              'Verification status: $verificationStatus',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildPlanSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -903,6 +1152,14 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                       storyVideos[i].copyWith(label: 'Story ${i + 1}');
                 }
               }
+
+              if (ownerMenuItems.length > _menuItemLimit) {
+                ownerMenuItems = ownerMenuItems.take(_menuItemLimit).toList();
+                menuController.text = ownerMenuItems
+                    .map((item) => (item['name'] ?? '').toString())
+                    .where((name) => name.trim().isNotEmpty)
+                    .join(', ');
+              }
             });
           },
         ),
@@ -917,12 +1174,12 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
           ),
           child: Text(
             selectedPlan == 'free'
-                ? 'Free: 1 banner photo, up to 3 gallery photos, text menu for customers, local menu photos for owner device only.'
+                ? 'Free Plan:\n• 1 banner image\n• Up to 3 gallery photos\n• No story videos\n• Up to 25 menu items\n• Menu item photos are not included on cloud\n• Gallery photos are separate from menu items\n• Customers can view menu and contact you\n• In-app ordering & POS locked until verification approval'
                 : selectedPlan == 'pro'
-                ? 'Pro: unlock more customer-visible media, up to 10 menu photos, and 1 story video.'
+                ? 'Pro Plan:\n• 1 banner image\n• Up to 6 gallery photos\n• 1 story video\n• Up to 25 menu items\n• First 15 menu items can include photos\n• Remaining menu items can be added without photos\n• Gallery photos are separate from menu items\n• In-app ordering enabled\n• POS system access'
                 : selectedPlan == 'premium'
-                ? 'Premium: unlock up to 25 menu photos and up to 5 story videos for customers.'
-                : 'Platinum: unlock all premium features plus verification eligibility and founding price lock.',
+                ? 'Premium Plan:\n• 1 banner image\n• Up to 10 gallery photos\n• Up to 5 story videos\n• Up to 25 menu items\n• All 25 menu items can include photos\n• Gallery photos are separate from menu items\n• In-app ordering enabled\n• POS system access\n• More visibility & features'
+                : 'Platinum Plan:\n• 1 banner image\n• Up to 15 gallery photos\n• Up to 5 story videos\n• All menu features unlocked\n• Gallery photos are separate from menu items\n• In-app ordering & full POS\n• Verified accounts receive a verified badge\n• First 100 food trucks & home kitchens get lifetime flat-fee price lock\n• All future features included',
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -1053,6 +1310,8 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
             ),
             const SizedBox(height: 16),
             _buildPlanSection(),
+            const SizedBox(height: 16),
+            _buildVerificationSection(),
             const SizedBox(height: 16),
             _buildSectionTitle('Payment Methods (Optional)'),
             const SizedBox(height: 10),

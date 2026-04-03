@@ -59,6 +59,9 @@ ios/Flutter/App.framework
 # =========================
 # Secrets (VERY IMPORTANT)
 # =========================
+key.properties
+android/key.properties
+android/secrets.properties
 secrets.properties
 *.keystore
 *.jks

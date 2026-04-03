@@ -247,6 +247,8 @@ class _TruckPageState extends State<TruckPage> {
       'id': result['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
       'title': result['title'] ?? '',
       'cuisine': result['cuisine'] ?? '',
+      'plan': result['plan'] ?? 'free',
+      'isVerified': result['isVerified'] ?? false,
       'position': LatLng(latitude, longitude),
       'latitude': latitude,
       'longitude': longitude,

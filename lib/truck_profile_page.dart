@@ -20,6 +20,20 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   Map<String, int> _selectedMenuCart = {};
   double _selectedMenuTotal = 0.0;
   List<Map<String, dynamic>> _selectedOrderItems = [];
+  bool get _canUseOrdering {
+    final String plan =
+    (widget.truck['plan'] ?? 'free').toString().toLowerCase().trim();
+    final bool isVerified = widget.truck['isVerified'] == true;
+
+    // 🔍 DEBUG (important)
+    print('DEBUG plan = $plan');
+    print('DEBUG isVerified = $isVerified');
+
+    return plan == 'pro' ||
+        plan == 'premium' ||
+        plan == 'platinum' ||
+        isVerified;
+  }
 
   bool get _isKitchen {
     final String type = (widget.truck['type'] ?? '').toString().toLowerCase();
@@ -624,6 +638,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   }
 
   void _showOrderBottomSheet() {
+    if (!_canUseOrdering) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ordering is not available for this seller'),
+        ),
+      );
+      return;
+    }
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
     final itemsController = TextEditingController(
@@ -1143,6 +1165,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 ),
               ),
             ),
+
             const SizedBox(height: 16),
             if (stories.isNotEmpty) ...[
               Padding(
@@ -1388,10 +1411,25 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _showOrderBottomSheet,
+                  onPressed: () {
+                    if (!_canUseOrdering) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'This seller has not enabled in-app ordering yet. Please contact them directly.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    _showOrderBottomSheet();
+                  },
                   icon: Icon(_isKitchen ? Icons.schedule : Icons.shopping_bag),
                   label: Text(
-                    _isKitchen ? 'Schedule Pre-Order' : 'Build Your Order',
+                    !_canUseOrdering
+                        ? 'Contact Seller'
+                        : (_isKitchen ? 'Schedule Pre-Order' : 'Build Order'),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isKitchen ? Colors.purple : Colors.orange,

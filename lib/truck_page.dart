@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'owner_portal_page.dart';
 import 'truck_profile_page.dart';
 import 'orders_page.dart';
@@ -18,10 +19,15 @@ class _TruckPageState extends State<TruckPage> {
 
   BitmapDescriptor? truckIcon;
   BitmapDescriptor? homeKitchenIcon;
+
   bool iconsLoaded = false;
   bool _isOpeningProfile = false;
+  bool _locationPermissionGranted = false;
+  bool _didTryInitialUserCenter = false;
 
-  final LatLng _initialPosition = const LatLng(37.9577, -121.2908);
+  static const LatLng _defaultUsaPosition = LatLng(37.9577, -121.2908);
+  LatLng _initialPosition = _defaultUsaPosition;
+  LatLng? _currentUserPosition;
 
   final List<Map<String, dynamic>> foodTrucks = [
     {
@@ -171,6 +177,9 @@ class _TruckPageState extends State<TruckPage> {
   void initState() {
     super.initState();
     _loadIcons();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeUserLocation();
+    });
   }
 
   Future<void> _loadIcons() async {
@@ -194,6 +203,8 @@ class _TruckPageState extends State<TruckPage> {
       final kitchenData =
       await kitchenFrame.image.toByteData(format: ui.ImageByteFormat.png);
 
+      if (!mounted) return;
+
       setState(() {
         truckIcon = BitmapDescriptor.fromBytes(
           truckData!.buffer.asUint8List(),
@@ -205,10 +216,148 @@ class _TruckPageState extends State<TruckPage> {
       });
     } catch (e) {
       debugPrint('Error loading icons: $e');
+      if (!mounted) return;
       setState(() {
         iconsLoaded = true;
       });
     }
+  }
+
+  Future<void> _initializeUserLocation() async {
+    try {
+      final hasPermission = await _handleLocationPermission();
+      if (!mounted) return;
+
+      setState(() {
+        _locationPermissionGranted = hasPermission;
+      });
+
+      if (!hasPermission) return;
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final LatLng userLatLng = LatLng(position.latitude, position.longitude);
+
+      if (!mounted) return;
+
+      setState(() {
+        _currentUserPosition = userLatLng;
+        _initialPosition = userLatLng;
+      });
+
+      if (mapController != null && !_didTryInitialUserCenter) {
+        _didTryInitialUserCenter = true;
+        await _animateToLocation(userLatLng, zoom: 13);
+      }
+    } catch (e) {
+      debugPrint('Location init error: $e');
+    }
+  }
+
+  Future<bool> _handleLocationPermission() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please turn on location services'),
+        ),
+      );
+      return false;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Location permission denied'),
+        ),
+      );
+      return false;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Location permission permanently denied. Open app settings.',
+          ),
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () {
+              Geolocator.openAppSettings();
+            },
+          ),
+        ),
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  LatLng _getLatLngFromItem(Map<String, dynamic> item) {
+    if (item['position'] is LatLng) {
+      return item['position'] as LatLng;
+    }
+
+    return LatLng(
+      ((item['latitude'] ?? _defaultUsaPosition.latitude) as num).toDouble(),
+      ((item['longitude'] ?? _defaultUsaPosition.longitude) as num).toDouble(),
+    );
+  }
+
+  Future<void> _animateToLocation(
+      LatLng target, {
+        double zoom = 12,
+      }) async {
+    if (mapController == null) return;
+
+    await mapController!.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: target,
+          zoom: zoom,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _centerOnBusiness(Map<String, dynamic> item) async {
+    final LatLng target = _getLatLngFromItem(item);
+    await _animateToLocation(target, zoom: 12);
+  }
+
+  Future<void> _centerOnUserLocation() async {
+    if (_currentUserPosition != null) {
+      await _animateToLocation(_currentUserPosition!, zoom: 13);
+      return;
+    }
+
+    await _initializeUserLocation();
+
+    if (_currentUserPosition != null) {
+      await _animateToLocation(_currentUserPosition!, zoom: 13);
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not get current location. Showing California.'),
+      ),
+    );
+
+    await _animateToLocation(_defaultUsaPosition, zoom: 9);
   }
 
   void _openProfilePage(Map<String, dynamic> item) {
@@ -296,6 +445,10 @@ class _TruckPageState extends State<TruckPage> {
       ),
     );
 
+    await Future.delayed(const Duration(milliseconds: 250));
+    await _centerOnBusiness(newBusiness);
+
+    if (!mounted) return;
     _openProfilePage(newBusiness);
   }
 
@@ -354,15 +507,11 @@ class _TruckPageState extends State<TruckPage> {
       markers.add(
         Marker(
           markerId: MarkerId(truck['id']),
-          position: truck['position'] is LatLng
-              ? truck['position'] as LatLng
-              : LatLng(
-            ((truck['latitude'] ?? 37.9577) as num).toDouble(),
-            ((truck['longitude'] ?? -121.2908) as num).toDouble(),
-          ),
+          position: _getLatLngFromItem(truck),
           icon: truckIcon ?? BitmapDescriptor.defaultMarker,
           infoWindow: InfoWindow(title: truck['title']),
-          onTap: () {
+          onTap: () async {
+            await _centerOnBusiness(truck);
             _openProfilePage(truck);
           },
         ),
@@ -373,18 +522,14 @@ class _TruckPageState extends State<TruckPage> {
       markers.add(
         Marker(
           markerId: MarkerId(kitchen['id']),
-          position: kitchen['position'] is LatLng
-              ? kitchen['position'] as LatLng
-              : LatLng(
-            ((kitchen['latitude'] ?? 37.9577) as num).toDouble(),
-            ((kitchen['longitude'] ?? -121.2908) as num).toDouble(),
-          ),
+          position: _getLatLngFromItem(kitchen),
           icon: homeKitchenIcon ??
               BitmapDescriptor.defaultMarkerWithHue(
                 BitmapDescriptor.hueViolet,
               ),
           infoWindow: InfoWindow(title: kitchen['title']),
-          onTap: () {
+          onTap: () async {
+            await _centerOnBusiness(kitchen);
             _openProfilePage(kitchen);
           },
         ),
@@ -478,8 +623,9 @@ class _TruckPageState extends State<TruckPage> {
                           const Icon(Icons.arrow_forward_ios, size: 18),
                           onTap: () {
                             Navigator.of(sheetContext).pop();
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) async {
                               if (!mounted) return;
+                              await _centerOnBusiness(item);
                               _openProfilePage(item);
                             });
                           },
@@ -498,11 +644,23 @@ class _TruckPageState extends State<TruckPage> {
 
   void _goToMapHome() {
     Navigator.pop(context);
+    if (_currentUserPosition != null) {
+      mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: _currentUserPosition!,
+            zoom: 13,
+          ),
+        ),
+      );
+      return;
+    }
+
     mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: _initialPosition,
-          zoom: 12,
+        const CameraPosition(
+          target: _defaultUsaPosition,
+          zoom: 9,
         ),
       ),
     );
@@ -517,6 +675,13 @@ class _TruckPageState extends State<TruckPage> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'My Location',
+            icon: const Icon(Icons.my_location),
+            onPressed: _centerOnUserLocation,
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -540,6 +705,14 @@ class _TruckPageState extends State<TruckPage> {
               leading: const Icon(Icons.home),
               title: const Text('Home'),
               onTap: _goToMapHome,
+            ),
+            ListTile(
+              leading: const Icon(Icons.my_location),
+              title: const Text('My Location'),
+              onTap: () {
+                Navigator.pop(context);
+                _centerOnUserLocation();
+              },
             ),
             ListTile(
               leading: const Icon(Icons.receipt_long),
@@ -594,13 +767,19 @@ class _TruckPageState extends State<TruckPage> {
           ? GoogleMap(
         initialCameraPosition: CameraPosition(
           target: _initialPosition,
-          zoom: 12,
+          zoom: 9,
         ),
-        onMapCreated: (controller) {
+        onMapCreated: (controller) async {
           mapController = controller;
+
+          if (_currentUserPosition != null && !_didTryInitialUserCenter) {
+            _didTryInitialUserCenter = true;
+            await _animateToLocation(_currentUserPosition!, zoom: 13);
+          }
         },
         markers: _buildMarkers(),
-        myLocationButtonEnabled: true,
+        myLocationEnabled: _locationPermissionGranted,
+        myLocationButtonEnabled: _locationPermissionGranted,
         zoomControlsEnabled: true,
       )
           : const Center(

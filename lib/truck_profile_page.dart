@@ -302,6 +302,84 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       );
     }
   }
+  double? _truckLatitude() {
+    final dynamic position = widget.truck['position'];
+    if (position != null && position is dynamic) {
+      try {
+        return (position.latitude as num).toDouble();
+      } catch (_) {}
+    }
+
+    final dynamic latitude = widget.truck['latitude'];
+    if (latitude is num) return latitude.toDouble();
+    if (latitude is String) return double.tryParse(latitude);
+
+    return null;
+  }
+
+  double? _truckLongitude() {
+    final dynamic position = widget.truck['position'];
+    if (position != null && position is dynamic) {
+      try {
+        return (position.longitude as num).toDouble();
+      } catch (_) {}
+    }
+
+    final dynamic longitude = widget.truck['longitude'];
+    if (longitude is num) return longitude.toDouble();
+    if (longitude is String) return double.tryParse(longitude);
+
+    return null;
+  }
+
+  Future<void> _openMapsAction({bool streetView = false}) async {
+    final double? lat = _truckLatitude();
+    final double? lng = _truckLongitude();
+
+    if (lat == null || lng == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location not available for this seller')),
+      );
+      return;
+    }
+
+    final Uri primaryUri = streetView
+        ? Uri.parse('google.streetview:cbll=$lat,$lng')
+        : Uri.parse('google.navigation:q=$lat,$lng');
+
+    final Uri fallbackUri = streetView
+        ? Uri.parse(
+      'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$lat,$lng',
+    )
+        : Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving',
+    );
+
+    bool launched = await launchUrl(
+      primaryUri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched) {
+      launched = await launchUrl(
+        fallbackUri,
+        mode: LaunchMode.externalApplication,
+      );
+    }
+
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            streetView
+                ? 'Could not open Street View'
+                : 'Could not open directions',
+          ),
+        ),
+      );
+    }
+  }
 
   bool _isOpenNow(String timing) {
     try {
@@ -550,13 +628,15 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     required String dateText,
     required String timeText,
     required String notes,
+    required String paymentType,
   }) async {
     final bool? confirmed = await showDialog<bool>(
       context: bottomSheetContext,
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(
-              isKitchen ? 'Confirm Pre-Order' : 'Confirm Order Request'),
+            isKitchen ? 'Confirm Pre-Order' : 'Confirm Order Request',
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -580,10 +660,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                   timeText,
                 ),
                 _buildSummaryRow(
+                  'Payment',
+                  paymentType == 'pay_now' ? 'Pay Now' : 'Pay at Pickup',
+                ),
+                _buildSummaryRow(
                   'Notes',
-                  notes
-                      .trim()
-                      .isEmpty ? 'No notes' : notes,
+                  notes.trim().isEmpty ? 'No notes' : notes,
                 ),
               ],
             ),
@@ -614,7 +696,9 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         'date': dateText,
         'time': timeText,
         'notes': notes,
-        'status': 'Pending',
+        'status': paymentType == 'pay_now' ? 'Waiting Payment' : 'Pending',
+        'paymentType': paymentType,
+        'paymentStatus': 'Unpaid',
         'total': _selectedMenuCart.isNotEmpty
             ? _selectedMenuTotal.toStringAsFixed(2)
             : '',
@@ -624,6 +708,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       });
 
       Navigator.pop(bottomSheetContext);
+
+      if (paymentType == 'pay_now') {
+        _showCustomerPaymentOptions();
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -635,6 +723,80 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         ),
       );
     }
+  }
+  void _showCustomerPaymentOptions() {
+    final String cashApp = (widget.truck['cashApp'] ?? '').toString().trim();
+    final String zelle = (widget.truck['zelle'] ?? '').toString().trim();
+    final String venmo = (widget.truck['venmo'] ?? '').toString().trim();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Pay Now'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Complete payment using one of these methods:',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 14),
+              if (cashApp.isNotEmpty)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.attach_money, color: Colors.green),
+                  title: const Text('Cash App'),
+                  subtitle: Text(cashApp),
+                  onTap: () => _openSocialLink(
+                    'https://cash.app/\$${cashApp.replaceAll('\$', '')}',
+                  ),
+                ),
+              if (zelle.isNotEmpty)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.account_balance, color: Colors.purple),
+                  title: const Text('Zelle'),
+                  subtitle: Text(zelle),
+                ),
+              if (venmo.isNotEmpty)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.payments, color: Colors.blue),
+                  title: const Text('Venmo'),
+                  subtitle: Text(venmo),
+                  onTap: () => _openSocialLink(
+                    'https://venmo.com/${venmo.replaceAll('@', '')}',
+                  ),
+                ),
+              if (cashApp.isEmpty && zelle.isEmpty && venmo.isEmpty)
+                const Text('No online payment methods added for this seller.'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Payment options opened. Seller will verify payment manually.'),
+                  ),
+                );
+              },
+              child: const Text('I Paid'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showOrderBottomSheet() {
@@ -659,6 +821,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     DateTime? selectedDate;
     TimeOfDay? selectedTime;
     String? selectedTimeSlot;
+    String selectedPaymentType = 'pay_later';
 
     final List<String> kitchenTimeSlots = [
       '9:00 AM - 10:00 AM',
@@ -1019,16 +1182,18 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 : selectedTime!.format(this.context);
 
             await _showOrderSummaryDialog(
-            bottomSheetContext: bottomSheetContext,
-            isKitchen: isKitchen,
-            customerName: nameController.text.trim(),
-            phone: phoneController.text.trim(),
-            items: itemsController.text.trim(),
-            quantity: quantityController.text.trim(),
-            dateText: finalDateText,
-            timeText: finalTimeText,
-            notes: notesController.text.trim(),
+              bottomSheetContext: bottomSheetContext,
+              isKitchen: isKitchen,
+              customerName: nameController.text.trim(),
+              phone: phoneController.text.trim(),
+              items: itemsController.text.trim(),
+              quantity: quantityController.text.trim(),
+              dateText: finalDateText,
+              timeText: finalTimeText,
+              notes: notesController.text.trim(),
+              paymentType: selectedPaymentType,
             );
+
             },
             icon: const Icon(Icons.receipt_long),
             label: const Text('Review Order Summary'),
@@ -1093,6 +1258,62 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       ),
     );
   }
+  Widget _buildPremiumActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required List<Color> colors,
+  }) {
+    return Expanded(
+      child: Container(
+        height: 54,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: colors,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colors.last.withOpacity(0.22),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1116,6 +1337,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     final String youtube = (widget.truck['youtube'] ?? '').toString();
     final String whatsapp =
     (widget.truck['whatsapp'] ?? widget.truck['phone'] ?? '').toString();
+    final String phone = (widget.truck['phone'] ?? '').toString();
+    final double? lat = _truckLatitude();
+    final double? lng = _truckLongitude();
+    final bool hasMapLocation = lat != null && lng != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -1167,6 +1392,114 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             ),
 
             const SizedBox(height: 16),
+            const SizedBox(height: 18),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: _isKitchen
+                        ? [
+                      Colors.purple.shade50,
+                      Colors.deepPurple.shade50,
+                    ]
+                        : [
+                      Colors.orange.shade50,
+                      Colors.amber.shade50,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _isKitchen
+                        ? Colors.purple.shade100
+                        : Colors.orange.shade100,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Quick Actions',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _isKitchen
+                            ? Colors.deepPurple.shade700
+                            : Colors.deepOrange.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        _buildPremiumActionButton(
+                          icon: Icons.call_rounded,
+                          label: 'Call',
+                          onTap: () => _openPhoneDialer(phone),
+                          colors: const [
+                            Color(0xFF0F9D58),
+                            Color(0xFF34A853),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        _buildPremiumActionButton(
+                          icon: Icons.near_me_rounded,
+                          label: 'Directions',
+                          onTap: hasMapLocation
+                              ? () => _openMapsAction()
+                              : () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Location not available'),
+                              ),
+                            );
+                          },
+                          colors: const [
+                            Color(0xFF1A73E8),
+                            Color(0xFF4285F4),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildPremiumActionButton(
+                          icon: Icons.map_outlined,
+                          label: 'Street View',
+                          onTap: hasMapLocation
+                              ? () => _openMapsAction(streetView: true)
+                              : () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Location not available'),
+                              ),
+                            );
+                          },
+                          colors: const [
+                            Color(0xFF5E35B1),
+                            Color(0xFF7E57C2),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        _buildPremiumActionButton(
+                          icon: Icons.chat_bubble_rounded,
+                          label: 'WhatsApp',
+                          onTap: () => _openWhatsApp(whatsapp),
+                          colors: const [
+                            Color(0xFF128C7E),
+                            Color(0xFF25D366),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
             if (stories.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -206,12 +206,12 @@ class _TruckPageState extends State<TruckPage> {
       if (!mounted) return;
 
       setState(() {
-        truckIcon = BitmapDescriptor.fromBytes(
-          truckData!.buffer.asUint8List(),
-        );
-        homeKitchenIcon = BitmapDescriptor.fromBytes(
-          kitchenData!.buffer.asUint8List(),
-        );
+        truckIcon = truckData != null
+            ? BitmapDescriptor.fromBytes(truckData.buffer.asUint8List())
+            : null;
+        homeKitchenIcon = kitchenData != null
+            ? BitmapDescriptor.fromBytes(kitchenData.buffer.asUint8List())
+            : null;
         iconsLoaded = true;
       });
     } catch (e) {
@@ -238,7 +238,7 @@ class _TruckPageState extends State<TruckPage> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      final LatLng userLatLng = LatLng(position.latitude, position.longitude);
+      final userLatLng = LatLng(position.latitude, position.longitude);
 
       if (!mounted) return;
 
@@ -332,9 +332,12 @@ class _TruckPageState extends State<TruckPage> {
     );
   }
 
-  Future<void> _centerOnBusiness(Map<String, dynamic> item) async {
-    final LatLng target = _getLatLngFromItem(item);
-    await _animateToLocation(target, zoom: 12);
+  Future<void> _centerOnBusiness(
+      Map<String, dynamic> item, {
+        double zoom = 15,
+      }) async {
+    final target = _getLatLngFromItem(item);
+    await _animateToLocation(target, zoom: zoom);
   }
 
   Future<void> _centerOnUserLocation() async {
@@ -358,6 +361,12 @@ class _TruckPageState extends State<TruckPage> {
     );
 
     await _animateToLocation(_defaultUsaPosition, zoom: 9);
+  }
+
+  Future<void> _openBusinessFromMap(Map<String, dynamic> item) async {
+    await _centerOnBusiness(item, zoom: 15);
+    if (!mounted) return;
+    _openProfilePage(item);
   }
 
   void _openProfilePage(Map<String, dynamic> item) {
@@ -446,7 +455,7 @@ class _TruckPageState extends State<TruckPage> {
     );
 
     await Future.delayed(const Duration(milliseconds: 250));
-    await _centerOnBusiness(newBusiness);
+    await _centerOnBusiness(newBusiness, zoom: 15);
 
     if (!mounted) return;
     _openProfilePage(newBusiness);
@@ -506,13 +515,12 @@ class _TruckPageState extends State<TruckPage> {
     for (final truck in foodTrucks) {
       markers.add(
         Marker(
-          markerId: MarkerId(truck['id']),
+          markerId: MarkerId(truck['id'].toString()),
           position: _getLatLngFromItem(truck),
           icon: truckIcon ?? BitmapDescriptor.defaultMarker,
-          infoWindow: InfoWindow(title: truck['title']),
+          infoWindow: InfoWindow(title: truck['title']?.toString() ?? ''),
           onTap: () async {
-            await _centerOnBusiness(truck);
-            _openProfilePage(truck);
+            await _openBusinessFromMap(truck);
           },
         ),
       );
@@ -521,16 +529,15 @@ class _TruckPageState extends State<TruckPage> {
     for (final kitchen in homeKitchens) {
       markers.add(
         Marker(
-          markerId: MarkerId(kitchen['id']),
+          markerId: MarkerId(kitchen['id'].toString()),
           position: _getLatLngFromItem(kitchen),
           icon: homeKitchenIcon ??
               BitmapDescriptor.defaultMarkerWithHue(
                 BitmapDescriptor.hueViolet,
               ),
-          infoWindow: InfoWindow(title: kitchen['title']),
+          infoWindow: InfoWindow(title: kitchen['title']?.toString() ?? ''),
           onTap: () async {
-            await _centerOnBusiness(kitchen);
-            _openProfilePage(kitchen);
+            await _openBusinessFromMap(kitchen);
           },
         ),
       );
@@ -607,7 +614,7 @@ class _TruckPageState extends State<TruckPage> {
                             ),
                           ),
                           title: Text(
-                            item['title'],
+                            item['title']?.toString() ?? '',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
@@ -615,7 +622,7 @@ class _TruckPageState extends State<TruckPage> {
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
-                              '${item['cuisine']}\n${item['timing']}',
+                              '${item['cuisine'] ?? ''}\n${item['timing'] ?? ''}',
                             ),
                           ),
                           isThreeLine: true,
@@ -625,7 +632,7 @@ class _TruckPageState extends State<TruckPage> {
                             Navigator.of(sheetContext).pop();
                             WidgetsBinding.instance.addPostFrameCallback((_) async {
                               if (!mounted) return;
-                              await _centerOnBusiness(item);
+                              await _centerOnBusiness(item, zoom: 15);
                               _openProfilePage(item);
                             });
                           },
@@ -642,28 +649,15 @@ class _TruckPageState extends State<TruckPage> {
     );
   }
 
-  void _goToMapHome() {
+  Future<void> _goToMapHome() async {
     Navigator.pop(context);
+
     if (_currentUserPosition != null) {
-      mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: _currentUserPosition!,
-            zoom: 13,
-          ),
-        ),
-      );
+      await _animateToLocation(_currentUserPosition!, zoom: 13);
       return;
     }
 
-    mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        const CameraPosition(
-          target: _defaultUsaPosition,
-          zoom: 9,
-        ),
-      ),
-    );
+    await _animateToLocation(_defaultUsaPosition, zoom: 9);
   }
 
   @override
@@ -769,10 +763,12 @@ class _TruckPageState extends State<TruckPage> {
           target: _initialPosition,
           zoom: 9,
         ),
+        mapType: MapType.normal,
         onMapCreated: (controller) async {
           mapController = controller;
 
-          if (_currentUserPosition != null && !_didTryInitialUserCenter) {
+          if (_currentUserPosition != null &&
+              !_didTryInitialUserCenter) {
             _didTryInitialUserCenter = true;
             await _animateToLocation(_currentUserPosition!, zoom: 13);
           }

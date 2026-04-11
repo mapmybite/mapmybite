@@ -392,10 +392,65 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
     Share.share(message);
   }
-  void _openPos() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('POS feature coming next')),
+  Future<void> _openPos() async {
+    if (!_canUseOrdering) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('POS is not available for this seller'),
+        ),
+      );
+      return;
+    }
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MenuPage(
+          truck: widget.truck,
+          isOwnerView: true,
+        ),
+      ),
     );
+
+    if (result == null || result is! Map) return;
+
+    final rawCart = result['cart'];
+    final rawTotal = result['total'];
+    final rawOrderItems = result['orderItems'];
+
+    if (rawCart is! Map) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No menu items selected')),
+      );
+      return;
+    }
+
+    final updatedCart = rawCart.map<String, int>(
+          (key, value) => MapEntry(
+        key.toString(),
+        (value as num).toInt(),
+      ),
+    );
+
+    if (updatedCart.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No menu items selected')),
+      );
+      return;
+    }
+
+    setState(() {
+      _selectedMenuCart = updatedCart;
+      _selectedMenuTotal = rawTotal is num ? rawTotal.toDouble() : 0.0;
+      _selectedOrderItems = rawOrderItems is List
+          ? rawOrderItems.cast<Map<String, dynamic>>()
+          : [];
+    });
+
+    if (!mounted) return;
+    _showPosCheckoutBottomSheet();
   }
 
   void _addToFavorite() {
@@ -726,7 +781,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         'date': dateText,
         'time': timeText,
         'notes': notes,
-        'status': paymentType == 'pay_now' ? 'Waiting Payment' : 'Pending',
+        'status': 'Pending',
         'paymentType': paymentType,
         'paymentStatus': 'Unpaid',
         'total': _selectedMenuCart.isNotEmpty
@@ -759,76 +814,347 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     final String zelle = (widget.truck['zelle'] ?? '').toString().trim();
     final String venmo = (widget.truck['venmo'] ?? '').toString().trim();
 
+    String selectedMethod = '';
+
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Pay Now'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Complete payment using one of these methods:',
-                style: TextStyle(fontSize: 14),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              const SizedBox(height: 14),
-              if (cashApp.isNotEmpty)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.attach_money, color: Colors.green),
-                  title: const Text('Cash App'),
-                  subtitle: Text(cashApp),
-                  onTap: () => _openSocialLink(
-                    'https://cash.app/\$${cashApp.replaceAll('\$', '')}',
+              title: const Text('Pay Now'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Complete payment using one of these methods:',
+                    style: TextStyle(fontSize: 14),
                   ),
+                  const SizedBox(height: 14),
+
+                  if (cashApp.isNotEmpty)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.attach_money, color: Colors.green),
+                      title: const Text('Cash App'),
+                      subtitle: Text(cashApp),
+                      trailing: selectedMethod == 'cash_app'
+                          ? const Icon(Icons.check_circle, color: Colors.green)
+                          : null,
+                      onTap: () {
+                        setDialogState(() {
+                          selectedMethod = 'cash_app';
+                        });
+                        _openSocialLink(
+                          'https://cash.app/\$${cashApp.replaceAll('\$', '')}',
+                        );
+                      },
+                    ),
+
+                  if (zelle.isNotEmpty)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.account_balance, color: Colors.purple),
+                      title: const Text('Zelle'),
+                      subtitle: Text(zelle),
+                      trailing: selectedMethod == 'zelle'
+                          ? const Icon(Icons.check_circle, color: Colors.green)
+                          : null,
+                      onTap: () {
+                        setDialogState(() {
+                          selectedMethod = 'zelle';
+                        });
+                      },
+                    ),
+
+                  if (venmo.isNotEmpty)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.payments, color: Colors.blue),
+                      title: const Text('Venmo'),
+                      subtitle: Text(venmo),
+                      trailing: selectedMethod == 'venmo'
+                          ? const Icon(Icons.check_circle, color: Colors.green)
+                          : null,
+                      onTap: () {
+                        setDialogState(() {
+                          selectedMethod = 'venmo';
+                        });
+                        _openSocialLink(
+                          'https://venmo.com/${venmo.replaceAll('@', '')}',
+                        );
+                      },
+                    ),
+
+                  if (cashApp.isEmpty && zelle.isEmpty && venmo.isEmpty)
+                    const Text('No online payment methods added for this seller.'),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Close'),
                 ),
-              if (zelle.isNotEmpty)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.account_balance, color: Colors.purple),
-                  title: const Text('Zelle'),
-                  subtitle: Text(zelle),
-                ),
-              if (venmo.isNotEmpty)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.payments, color: Colors.blue),
-                  title: const Text('Venmo'),
-                  subtitle: Text(venmo),
-                  onTap: () => _openSocialLink(
-                    'https://venmo.com/${venmo.replaceAll('@', '')}',
-                  ),
-                ),
-              if (cashApp.isEmpty && zelle.isEmpty && venmo.isEmpty)
-                const Text('No online payment methods added for this seller.'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Close'),
+                ElevatedButton(
+                onPressed: () {
+            if (OrderData.orders.isNotEmpty) {
+            final int lastIndex = OrderData.orders.length - 1;
+
+            setState(() {
+            OrderData.orders[lastIndex]['paymentStatus'] = 'Paid';
+            OrderData.orders[lastIndex]['paymentMethod'] =
+            selectedMethod.isEmpty ? 'Pay Now' : selectedMethod;
+            OrderData.orders[lastIndex]['status'] = 'Pending';
+            });
+            }
+
+            Navigator.pop(dialogContext);
+
+            ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+            content: Text(
+            selectedMethod.isEmpty
+            ? 'Payment marked as paid'
+                : 'Payment marked as paid via ${selectedMethod == 'cash_app' ? 'Cash App' : selectedMethod == 'zelle' ? 'Zelle' : selectedMethod == 'venmo' ? 'Venmo' : 'Pay Now'}',
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Payment options opened. Seller will verify payment manually.'),
-                  ),
-                );
-              },
-              child: const Text('I Paid'),
             ),
-          ],
+            );
+            },
+                  child: const Text('I Paid'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
+  void _showPosCheckoutBottomSheet() {
+    if (_selectedMenuCart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select menu items first')),
+      );
+      return;
+    }
 
+    final customerNameController = TextEditingController();
+    final notesController = TextEditingController();
+    String selectedPaymentMethod = 'cash';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'POS Checkout',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.truck['title'] ?? '',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _buildSelectedMenuItemsCard(
+                      onClear: () {
+                        Navigator.pop(bottomSheetContext);
+                        _clearSelectedMenuCart();
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: customerNameController,
+                      decoration: InputDecoration(
+                        labelText: 'Customer Name (optional)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Payment Method',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Cash'),
+                          selected: selectedPaymentMethod == 'cash',
+                          onSelected: (_) {
+                            setModalState(() {
+                              selectedPaymentMethod = 'cash';
+                            });
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Card'),
+                          selected: selectedPaymentMethod == 'card',
+                          onSelected: (_) {
+                            setModalState(() {
+                              selectedPaymentMethod = 'card';
+                            });
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Cash App'),
+                          selected: selectedPaymentMethod == 'cash_app',
+                          onSelected: (_) {
+                            setModalState(() {
+                              selectedPaymentMethod = 'cash_app';
+                            });
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Zelle'),
+                          selected: selectedPaymentMethod == 'zelle',
+                          onSelected: (_) {
+                            setModalState(() {
+                              selectedPaymentMethod = 'zelle';
+                            });
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Venmo'),
+                          selected: selectedPaymentMethod == 'venmo',
+                          onSelected: (_) {
+                            setModalState(() {
+                              selectedPaymentMethod = 'venmo';
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notesController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'POS Notes',
+                        hintText: 'Extra sauce, no onions, paid in cash, etc.',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          final now = DateTime.now();
+                          final dateText =
+                              '${now.month}/${now.day}/${now.year}';
+                          final timeText = TimeOfDay.now().format(context);
+
+                          OrderData.orders.add({
+                            'business': widget.truck['title'] ?? '',
+                            'customer': customerNameController.text.trim().isEmpty
+                                ? 'Walk-in Customer'
+                                : customerNameController.text.trim(),
+                            'phone': '',
+                            'items': _selectedItemsText(),
+                            'quantity': _selectedTotalQuantity().toString(),
+                            'date': dateText,
+                            'time': timeText,
+                            'notes': notesController.text.trim(),
+                            'status': 'Completed',
+                            'paymentType': selectedPaymentMethod,
+                            'paymentStatus': 'Paid',
+                            'total': _selectedMenuTotal.toStringAsFixed(2),
+                            'cashApp': widget.truck['cashApp'] ?? '',
+                            'zelle': widget.truck['zelle'] ?? '',
+                            'venmo': widget.truck['venmo'] ?? '',
+                            'orderType': 'pos',
+                            'orderSource': 'owner_pos',
+                            'createdAt': now.toIso8601String(),
+
+                          });
+
+                          Navigator.pop(bottomSheetContext);
+
+                          setState(() {
+                            _selectedMenuCart = {};
+                            _selectedOrderItems = [];
+                            _selectedMenuTotal = 0.0;
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('POS order completed'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.check_circle),
+                        label: Text(
+                          'Complete POS Order • \$${_selectedMenuTotal.toStringAsFixed(2)}',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black87,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
   void _showOrderBottomSheet() {
     if (!_canUseOrdering) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1167,22 +1493,63 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             color: Colors.grey.shade700,
             ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-            controller: notesController,
-            maxLines: 3,
-            decoration: InputDecoration(
-            labelText: 'Notes',
-            hintText: 'Spicy level, no onions, extra sauce, etc.',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            ),
-            ),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: notesController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: 'Notes',
+                          hintText: 'Spicy level, no onions, extra sauce, etc.',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Payment Option',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: RadioListTile<String>(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Pay at Pickup'),
+                              value: 'pay_later',
+                              groupValue: selectedPaymentType,
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setModalState(() {
+                                  selectedPaymentType = value;
+                                });
+                              },
+                            ),
+                          ),
+                          Expanded(
+                            child: RadioListTile<String>(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Pay Now'),
+                              value: 'pay_now',
+                              groupValue: selectedPaymentType,
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setModalState(() {
+                                  selectedPaymentType = value;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
             onPressed: () async {
             final bool missingRequired =
             nameController.text.trim().isEmpty ||

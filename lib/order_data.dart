@@ -1,3 +1,3 @@
 class OrderData {
-  static List<Map<String, String>> orders = [];
+  static List<Map<String, dynamic>> orders = [];
 }

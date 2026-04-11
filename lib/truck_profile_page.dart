@@ -3,9 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
+import 'package:share_plus/share_plus.dart';
 import 'menu_page.dart';
 
 import 'order_data.dart';
+
+
 
 class TruckProfilePage extends StatefulWidget {
   final Map<String, dynamic> truck;
@@ -17,6 +20,7 @@ class TruckProfilePage extends StatefulWidget {
 }
 
 class _TruckProfilePageState extends State<TruckProfilePage> {
+  bool _isFavorite = false;
   Map<String, int> _selectedMenuCart = {};
   double _selectedMenuTotal = 0.0;
   List<Map<String, dynamic>> _selectedOrderItems = [];
@@ -380,7 +384,33 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       );
     }
   }
+  void _shareProfile() {
+    final String name = widget.truck['title'] ?? 'Food Truck';
+    final String cuisine = widget.truck['cuisine'] ?? '';
 
+    final String message = 'Check out $name on MapMyBite 🍔\n$cuisine';
+
+    Share.share(message);
+  }
+  void _openPos() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('POS feature coming next')),
+    );
+  }
+
+  void _addToFavorite() {
+    setState(() {
+      _isFavorite = !_isFavorite;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isFavorite ? 'Added to favorites' : 'Removed from favorites',
+        ),
+      ),
+    );
+  }
   bool _isOpenNow(String timing) {
     try {
       final parts = timing.split('-');
@@ -928,7 +958,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 18),
-                if (_selectedMenuCart.isNotEmpty) ...[
+                if (_selectedMenuCart.isNotEmpty)...[
             _buildSelectedMenuItemsCard(
             onClear: () {
             _clearSelectedMenuCart();
@@ -1379,6 +1409,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               ),
             ),
             const SizedBox(height: 6),
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
@@ -1391,213 +1422,153 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               ),
             ),
 
-            const SizedBox(height: 16),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: _isKitchen
-                        ? [
-                      Colors.purple.shade50,
-                      Colors.deepPurple.shade50,
-                    ]
-                        : [
-                      Colors.orange.shade50,
-                      Colors.amber.shade50,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _isKitchen
-                        ? Colors.purple.shade100
-                        : Colors.orange.shade100,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Quick Actions',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: _isKitchen
-                            ? Colors.deepPurple.shade700
-                            : Colors.deepOrange.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        _buildPremiumActionButton(
-                          icon: Icons.call_rounded,
-                          label: 'Call',
-                          onTap: () => _openPhoneDialer(phone),
-                          colors: const [
-                            Color(0xFF0F9D58),
-                            Color(0xFF34A853),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
-                        _buildPremiumActionButton(
-                          icon: Icons.near_me_rounded,
-                          label: 'Directions',
-                          onTap: hasMapLocation
-                              ? () => _openMapsAction()
-                              : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Location not available'),
-                              ),
-                            );
-                          },
-                          colors: const [
-                            Color(0xFF1A73E8),
-                            Color(0xFF4285F4),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _buildPremiumActionButton(
-                          icon: Icons.map_outlined,
-                          label: 'Street View',
-                          onTap: hasMapLocation
-                              ? () => _openMapsAction(streetView: true)
-                              : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Location not available'),
-                              ),
-                            );
-                          },
-                          colors: const [
-                            Color(0xFF5E35B1),
-                            Color(0xFF7E57C2),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
-                        _buildPremiumActionButton(
-                          icon: Icons.chat_bubble_rounded,
-                          label: 'WhatsApp',
-                          onTap: () => _openWhatsApp(whatsapp),
-                          colors: const [
-                            Color(0xFF128C7E),
-                            Color(0xFF25D366),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (stories.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Today Stories',
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            FullScreenStoryViewerPage(
-                              stories: stories,
-                              initialIndex: 0,
-                              title: widget.truck['title'] ?? 'Story',
-                            ),
-                      ),
-                    );
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 74,
-                        height: 74,
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: _isKitchen
-                                ? [Colors.purple, Colors.deepPurpleAccent]
-                                : [Colors.orange, Colors.deepOrange],
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      final stories = _buildStoryItems();
+                      if (stories.isEmpty) return;
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FullScreenStoryViewerPage(
+                            stories: stories,
+                            initialIndex: 0,
+                            title: widget.truck['title'] ?? 'Story',
                           ),
                         ),
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: Colors.black,
+                      );
+                    },
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 70,
+                          height: 70,
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.orange, width: 3),
                           ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              const Icon(
-                                Icons.play_arrow_rounded,
-                                color: Colors.white,
-                                size: 30,
+                          child: const ClipOval(
+                            child: ColoredBox(color: Colors.black),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 2,
+                          right: 2,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${_buildStoryItems().length}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
                               ),
-                              Positioned(
-                                bottom: 6,
-                                right: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    '${stories.length}',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  Row(
+                    children: [
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: _shareProfile,
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
                               ),
+                              child: const Icon(
+                                Icons.share,
+                                size: 20,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Share",
+                            style: TextStyle(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              _openMapsAction();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.directions,
+                                size: 20,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Directions",
+                            style: TextStyle(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: _addToFavorite,
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                                size: 20,
+                                color: _isFavorite ? Colors.red : Colors.black,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Save",
+                            style: TextStyle(fontSize: 11),
+                          ),
                             ],
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        width: 90,
-                        child: Text(
-                          '${stories.length} stories',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 18),
-            ],
+    ),
+
+    const SizedBox(height: 18),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -1741,38 +1712,57 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             const SizedBox(height: 14),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    if (!_canUseOrdering) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'This seller has not enabled in-app ordering yet. Please contact them directly.',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        if (!_canUseOrdering) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'This seller has not enabled in-app ordering yet. Please contact them directly.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
 
-                    _showOrderBottomSheet();
-                  },
-                  icon: Icon(_isKitchen ? Icons.schedule : Icons.shopping_bag),
-                  label: Text(
-                    !_canUseOrdering
-                        ? 'Contact Seller'
-                        : (_isKitchen ? 'Schedule Pre-Order' : 'Build Order'),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isKitchen ? Colors.purple : Colors.orange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                        _showOrderBottomSheet();
+                      },
+                      icon: Icon(_isKitchen ? Icons.schedule : Icons.shopping_bag),
+                      label: Text(
+                        !_canUseOrdering
+                            ? 'Contact Seller'
+                            : (_isKitchen ? 'Schedule Pre-Order' : 'Build Order'),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isKitchen ? Colors.purple : Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _openPos,
+                      icon: const Icon(Icons.point_of_sale),
+                      label: const Text('POS'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black87,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 10),
@@ -2458,4 +2448,56 @@ class _FullScreenGalleryPageState extends State<FullScreenGalleryPage> {
       ),
     );
   }
+  bool _isFavorite = false;
+
+  void _shareProfile() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Share feature coming next')),
+    );
+  }
+
+  void _openDirections() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Directions feature coming next')),
+    );
+  }
+
+  void _addToFavorite() {
+    setState(() {
+      _isFavorite = !_isFavorite;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isFavorite ? 'Added to favorites' : 'Removed from favorites',
+        ),
+      ),
+    );
+  }
+
+  Widget _smallActionButton(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 20, color: Colors.black),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
 }

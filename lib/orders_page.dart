@@ -15,8 +15,15 @@ class _OrdersPageState extends State<OrdersPage> {
     setState(() {
       OrderData.orders[index]['status'] = newStatus;
 
+      final order = OrderData.orders[index];
+      final bool isPayAtCounter = _isPayAtCounterOrder(order);
+
       if (newStatus == 'Completed') {
         OrderData.orders[index]['transactionComplete'] = true;
+
+        if (isPayAtCounter) {
+          OrderData.orders[index]['paymentStatus'] = 'Paid';
+        }
       }
     });
 
@@ -24,6 +31,43 @@ class _OrdersPageState extends State<OrdersPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Order marked $newStatus')),
+    );
+  }
+
+  void _rejectOrder(int index) {
+    setState(() {
+      OrderData.orders[index]['status'] = 'Rejected';
+      OrderData.orders[index]['transactionComplete'] = false;
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Order rejected')),
+    );
+  }
+
+  void _markPaymentRequestSent(int index) {
+    setState(() {
+      OrderData.orders[index]['paymentStatus'] = 'Payment Request Sent';
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment options sent to customer')),
+    );
+  }
+
+  void _markPaymentReceived(int index) {
+    setState(() {
+      OrderData.orders[index]['paymentStatus'] = 'Paid';
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment confirmed')),
     );
   }
 
@@ -52,28 +96,88 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
-  String _formatPaymentMethod(String raw) {
-    switch (raw.trim().toLowerCase()) {
-      case 'cash':
-        return 'Cash';
-      case 'card':
-        return 'Card';
-      case 'cash_app':
-        return 'Cash App';
-      case 'zelle':
-        return 'Zelle';
-      case 'venmo':
-        return 'Venmo';
-      case 'square':
-        return 'Square';
-      case 'pay_now':
-        return 'Pay Now';
-      case 'pay_later':
-        return 'Pay at Pickup';
-      default:
-        if (raw.trim().isEmpty) return 'Not selected';
-        return raw;
+  bool _isPayNowOrder(Map<String, dynamic> order) {
+    final String paymentType =
+    (order['paymentType'] ?? '').toString().trim().toLowerCase();
+    final String paymentMethod =
+    (order['paymentMethod'] ?? '').toString().trim().toLowerCase();
+
+    return paymentType == 'pay_now' ||
+        paymentMethod == 'pay_now' ||
+        paymentMethod == 'cash_app' ||
+        paymentMethod == 'zelle' ||
+        paymentMethod == 'venmo' ||
+        paymentMethod == 'square' ||
+        paymentMethod == 'card';
+  }
+
+  bool _isPayAtCounterOrder(Map<String, dynamic> order) {
+    final String paymentType =
+    (order['paymentType'] ?? '').toString().trim().toLowerCase();
+    final String paymentMethod =
+    (order['paymentMethod'] ?? '').toString().trim().toLowerCase();
+
+    return paymentType == 'pay_later' ||
+        paymentType == 'pay_at_counter' ||
+        paymentMethod == 'pay_later' ||
+        paymentMethod == 'pay_at_counter' ||
+        paymentMethod == 'cash';
+  }
+
+  String _formatPaymentMethod(Map<String, dynamic> order) {
+    final String paymentType =
+    (order['paymentType'] ?? '').toString().trim().toLowerCase();
+    final String raw =
+    (order['paymentMethod'] ?? '').toString().trim().toLowerCase();
+
+    if (raw == 'cash') return 'Cash';
+    if (raw == 'card') return 'Card';
+    if (raw == 'cash_app') return 'Cash App';
+    if (raw == 'zelle') return 'Zelle';
+    if (raw == 'venmo') return 'Venmo';
+    if (raw == 'square') return 'Square';
+    if (raw == 'pay_now') return 'Pay Now';
+    if (raw == 'pay_later' || raw == 'pay_at_counter') return 'Pay at Counter';
+
+    if (paymentType == 'pay_later' || paymentType == 'pay_at_counter') {
+      return 'Pay at Counter';
     }
+
+    if (paymentType == 'pay_now') {
+      return 'Pay Now';
+    }
+
+    return raw.isEmpty ? 'Not selected' : raw;
+  }
+
+  String _displayPaymentStatus(
+      Map<String, dynamic> order,
+      String status,
+      bool isPosOrder,
+      bool isPayNowOrder,
+      bool isPayAtCounterOrder,
+      ) {
+    final String raw = (order['paymentStatus'] ?? '').toString().trim();
+
+    if (raw.isNotEmpty) {
+      return raw;
+    }
+
+    if (status == 'Completed' || isPosOrder) {
+      return 'Paid';
+    }
+
+    if (isPayAtCounterOrder) {
+      return 'Pay at Counter';
+    }
+
+    if (isPayNowOrder) {
+      if (status == 'Pending') return 'Waiting for owner approval';
+      if (status == 'Accepted') return 'Waiting to send payment options';
+      return 'Unpaid';
+    }
+
+    return 'Unpaid';
   }
 
   Widget _infoLine(
@@ -196,7 +300,7 @@ class _OrdersPageState extends State<OrdersPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Ask customer to pay using one of these:',
+                  'Send customer one of these payment options:',
                   style: TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 14),
@@ -237,7 +341,7 @@ class _OrdersPageState extends State<OrdersPage> {
                 ],
                 const SizedBox(height: 14),
                 const Text(
-                  'After payment, tap "Payment Received"',
+                  'After customer pays, tap "Payment Received".',
                   style: TextStyle(fontSize: 13),
                 ),
               ],
@@ -251,15 +355,9 @@ class _OrdersPageState extends State<OrdersPage> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
-                _updateStatus(index, 'Payment Pending');
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Order accepted'),
-                  ),
-                );
+                _markPaymentRequestSent(index);
               },
-              child: const Text('Accept Order'),
+              child: const Text('Send Payment Request'),
             ),
           ],
         );
@@ -287,34 +385,57 @@ class _OrdersPageState extends State<OrdersPage> {
           final order = orders[index];
 
           final String status = (order['status'] ?? 'Pending').toString();
-          final String business =
-          (order['business'] ?? '').toString();
-          final String items =
-          (order['items'] ?? '').toString();
-          final String customer =
-          (order['customer'] ?? '').toString();
-          final String phone =
-          (order['phone'] ?? '').toString();
-          final String total =
-          (order['total'] ?? '').toString();
-          final String paymentStatus =
-          (order['paymentStatus'] ?? '').toString().isEmpty
-              ? (status == 'Completed' || order['orderType'] == 'pos'
-              ? 'Paid'
-              : 'Unpaid')
-              : (order['paymentStatus'] ?? '').toString();
-
-          final String rawPaymentMethod =
-          (order['paymentMethod'] ?? order['paymentType'] ?? '')
-              .toString();
-          final String paymentMethod =
-          _formatPaymentMethod(rawPaymentMethod);
+          final String business = (order['business'] ?? '').toString();
+          final String items = (order['items'] ?? '').toString();
+          final String customer = (order['customer'] ?? '').toString();
+          final String phone = (order['phone'] ?? '').toString();
+          final String total = (order['total'] ?? '').toString();
 
           final bool isPosOrder = order['orderType'] == 'pos';
           final bool isHereNow = order['customerAtLocation'] == true;
           final bool transactionComplete =
               order['transactionComplete'] == true ||
                   status == 'Completed';
+
+          final bool isPayNowOrder = _isPayNowOrder(order);
+          final bool isPayAtCounterOrder = _isPayAtCounterOrder(order);
+
+          final String paymentMethod = _formatPaymentMethod(order);
+
+          final String paymentStatus = _displayPaymentStatus(
+            order,
+            status,
+            isPosOrder,
+            isPayNowOrder,
+            isPayAtCounterOrder,
+          );
+
+          final bool isRejected = status == 'Rejected';
+          final bool isAccepted = status == 'Accepted';
+          final bool isPreparing = status == 'Preparing';
+          final bool isReady = status == 'Ready';
+          final bool isCompleted = status == 'Completed';
+          final bool isPaid = paymentStatus.toLowerCase() == 'paid';
+
+          final bool canStartPreparing =
+              isAccepted &&
+                  !isRejected &&
+                  !isCompleted &&
+                  (isPayAtCounterOrder || isPaid || isPosOrder);
+
+          final bool showSendPaymentOptions =
+              isAccepted &&
+                  !isRejected &&
+                  !isCompleted &&
+                  isPayNowOrder &&
+                  !isPaid;
+
+          final bool showPaymentReceived =
+              isAccepted &&
+                  !isRejected &&
+                  !isCompleted &&
+                  isPayNowOrder &&
+                  !isPaid;
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -335,7 +456,7 @@ class _OrdersPageState extends State<OrdersPage> {
                     isPosOrder
                         ? 'POS Order'
                         : isHereNow
-                        ? 'HERE NOW'
+                        ? 'CUSTOMER IS HERE'
                         : 'Online Order',
                     style: TextStyle(
                       fontSize: 12,
@@ -351,7 +472,15 @@ class _OrdersPageState extends State<OrdersPage> {
                   _infoLine('Items', items),
                   _infoLine('Customer', customer.isEmpty ? 'N/A' : customer),
                   _infoLine('Phone', phone.isEmpty ? 'N/A' : phone),
-                  _infoLine('Status', status),
+                  _infoLine(
+                    'Status',
+                    status,
+                    valueColor: isRejected
+                        ? Colors.red
+                        : isCompleted
+                        ? Colors.green
+                        : Colors.black87,
+                  ),
                   _infoLine(
                     'Payment Method',
                     paymentMethod,
@@ -360,10 +489,19 @@ class _OrdersPageState extends State<OrdersPage> {
                   _infoLine(
                     'Payment Status',
                     paymentStatus,
-                    valueColor: paymentStatus.toLowerCase() == 'paid'
+                    valueColor: isPaid
                         ? Colors.green
+                        : isPayAtCounterOrder
+                        ? Colors.orange
                         : Colors.redAccent,
                   ),
+                  if (isHereNow)
+                    _infoLine(
+                      'Skip the Line',
+                      'Customer is here',
+                      valueColor: Colors.green,
+                      valueWeight: FontWeight.bold,
+                    ),
                   if (total.trim().isNotEmpty)
                     _infoLine(
                       'Total',
@@ -389,50 +527,37 @@ class _OrdersPageState extends State<OrdersPage> {
                         child: const Text('Accept'),
                       ),
                       ElevatedButton(
-                        onPressed: status == 'Accepted' ||
-                            status == 'Payment Pending'
+                        onPressed: status == 'Pending'
+                            ? () => _rejectOrder(index)
+                            : null,
+                        child: const Text('Reject'),
+                      ),
+                      ElevatedButton(
+                        onPressed: canStartPreparing
                             ? () => _updateStatus(index, 'Preparing')
                             : null,
                         child: const Text('Preparing'),
                       ),
                       ElevatedButton(
-                        onPressed: status == 'Preparing'
+                        onPressed: isPreparing
                             ? () => _updateStatus(index, 'Ready')
                             : null,
                         child: const Text('Ready'),
                       ),
                       ElevatedButton(
-                        onPressed: status == 'Ready'
+                        onPressed: isReady
                             ? () => _updateStatus(index, 'Completed')
                             : null,
                         child: const Text('Complete'),
                       ),
-                      if (status == 'Pending' &&
-                          !isPosOrder &&
-                          (((order['paymentType'] ?? '').toString() ==
-                              'pay_now') ||
-                              ((order['paymentStatus'] ?? '').toString() ==
-                                  'Unpaid')))
+                      if (showSendPaymentOptions)
                         OutlinedButton(
                           onPressed: () => _showPaymentOptionsDialog(index),
                           child: const Text('Payment Options'),
                         ),
-                      if (status == 'Payment Pending')
+                      if (showPaymentReceived)
                         OutlinedButton(
-                          onPressed: () {
-                            setState(() {
-                              OrderData.orders[index]['paymentStatus'] =
-                              'Paid';
-                              OrderData.orders[index]['status'] =
-                              'Accepted';
-                            });
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Payment marked received'),
-                              ),
-                            );
-                          },
+                          onPressed: () => _markPaymentReceived(index),
                           child: const Text('Payment Received'),
                         ),
                     ],

@@ -746,7 +746,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 ),
                 _buildSummaryRow(
                   'Payment',
-                  paymentType == 'pay_now' ? 'Pay Now' : 'Pay at Pickup',
+                  paymentType == 'pay_now' ? 'Pay Now' : 'Pay at Counter',
                 ),
                 _buildSummaryRow(
                   'Notes',
@@ -783,25 +783,31 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         'notes': notes,
         'status': 'Pending',
         'paymentType': paymentType,
-        'paymentStatus': 'Unpaid',
+        'paymentMethod': paymentType == 'pay_now' ? 'pay_now' : 'pay_at_counter',
+        'paymentStatus': paymentType == 'pay_now'
+            ? 'Waiting for owner approval'
+            : 'Pay at Counter',
         'total': _selectedMenuCart.isNotEmpty
             ? _selectedMenuTotal.toStringAsFixed(2)
             : '',
         'cashApp': widget.truck['cashApp'] ?? '',
         'zelle': widget.truck['zelle'] ?? '',
         'venmo': widget.truck['venmo'] ?? '',
+        'square': widget.truck['square'] ?? '',
+        'customerAtLocation': false,
+        'customerLatitude': '',
+        'customerLongitude': '',
+        'skipLine': true,
       });
 
       Navigator.pop(bottomSheetContext);
 
-      if (paymentType == 'pay_now') {
-        _showCustomerPaymentOptions();
-      }
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            isKitchen
+            paymentType == 'pay_now'
+                ? 'Order submitted. Wait for owner to accept and send payment options.'
+                : isKitchen
                 ? 'Pre-order request submitted for ${widget.truck['title']}'
                 : 'Order request submitted for ${widget.truck['title']}',
           ),
@@ -810,125 +816,23 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     }
   }
   void _showCustomerPaymentOptions() {
-    final String cashApp = (widget.truck['cashApp'] ?? '').toString().trim();
-    final String zelle = (widget.truck['zelle'] ?? '').toString().trim();
-    final String venmo = (widget.truck['venmo'] ?? '').toString().trim();
-
-    String selectedMethod = '';
-
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: const Text('Pay Now'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Complete payment using one of these methods:',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 14),
-
-                  if (cashApp.isNotEmpty)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.attach_money, color: Colors.green),
-                      title: const Text('Cash App'),
-                      subtitle: Text(cashApp),
-                      trailing: selectedMethod == 'cash_app'
-                          ? const Icon(Icons.check_circle, color: Colors.green)
-                          : null,
-                      onTap: () {
-                        setDialogState(() {
-                          selectedMethod = 'cash_app';
-                        });
-                        _openSocialLink(
-                          'https://cash.app/\$${cashApp.replaceAll('\$', '')}',
-                        );
-                      },
-                    ),
-
-                  if (zelle.isNotEmpty)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.account_balance, color: Colors.purple),
-                      title: const Text('Zelle'),
-                      subtitle: Text(zelle),
-                      trailing: selectedMethod == 'zelle'
-                          ? const Icon(Icons.check_circle, color: Colors.green)
-                          : null,
-                      onTap: () {
-                        setDialogState(() {
-                          selectedMethod = 'zelle';
-                        });
-                      },
-                    ),
-
-                  if (venmo.isNotEmpty)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.payments, color: Colors.blue),
-                      title: const Text('Venmo'),
-                      subtitle: Text(venmo),
-                      trailing: selectedMethod == 'venmo'
-                          ? const Icon(Icons.check_circle, color: Colors.green)
-                          : null,
-                      onTap: () {
-                        setDialogState(() {
-                          selectedMethod = 'venmo';
-                        });
-                        _openSocialLink(
-                          'https://venmo.com/${venmo.replaceAll('@', '')}',
-                        );
-                      },
-                    ),
-
-                  if (cashApp.isEmpty && zelle.isEmpty && venmo.isEmpty)
-                    const Text('No online payment methods added for this seller.'),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Close'),
-                ),
-                ElevatedButton(
-                onPressed: () {
-            if (OrderData.orders.isNotEmpty) {
-            final int lastIndex = OrderData.orders.length - 1;
-
-            setState(() {
-            OrderData.orders[lastIndex]['paymentStatus'] = 'Paid';
-            OrderData.orders[lastIndex]['paymentMethod'] =
-            selectedMethod.isEmpty ? 'Pay Now' : selectedMethod;
-            OrderData.orders[lastIndex]['status'] = 'Pending';
-            });
-            }
-
-            Navigator.pop(dialogContext);
-
-            ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-            content: Text(
-            selectedMethod.isEmpty
-            ? 'Payment marked as paid'
-                : 'Payment marked as paid via ${selectedMethod == 'cash_app' ? 'Cash App' : selectedMethod == 'zelle' ? 'Zelle' : selectedMethod == 'venmo' ? 'Venmo' : 'Pay Now'}',
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Waiting for Owner'),
+          content: const Text(
+            'The owner must accept your order first. After that, payment options will be sent to you.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('OK'),
             ),
-            ),
-            );
-            },
-                  child: const Text('I Paid'),
-                ),
-              ],
-            );
-          },
+          ],
         );
       },
     );
@@ -1519,7 +1423,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                           Expanded(
                             child: RadioListTile<String>(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Pay at Pickup'),
+                              title: const Text('Pay at Counter'),
                               value: 'pay_later',
                               groupValue: selectedPaymentType,
                               onChanged: (value) {

@@ -12,14 +12,20 @@ import 'order_data.dart';
 
 class TruckProfilePage extends StatefulWidget {
   final Map<String, dynamic> truck;
+  final bool isOwner;
 
-  const TruckProfilePage({super.key, required this.truck});
+  const TruckProfilePage({
+    super.key,
+    required this.truck,
+    this.isOwner = false,
+  });
 
   @override
   State<TruckProfilePage> createState() => _TruckProfilePageState();
 }
 
 class _TruckProfilePageState extends State<TruckProfilePage> {
+  bool get isOwner => widget.isOwner;
   bool _isFavorite = false;
   Map<String, int> _selectedMenuCart = {};
   double _selectedMenuTotal = 0.0;
@@ -1983,7 +1989,27 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             const SizedBox(height: 14),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
+              child: isOwner
+                  ? Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _openPos,
+                      icon: const Icon(Icons.point_of_sale),
+                      label: const Text('POS'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black87,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+                  : Row(
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
@@ -2001,30 +2027,17 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
                         _showOrderBottomSheet();
                       },
-                      icon: Icon(_isKitchen ? Icons.schedule : Icons.shopping_bag),
+                      icon: Icon(
+                        _isKitchen ? Icons.schedule : Icons.shopping_bag,
+                      ),
                       label: Text(
                         !_canUseOrdering
                             ? 'Contact Seller'
                             : (_isKitchen ? 'Schedule Pre-Order' : 'Build Order'),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isKitchen ? Colors.purple : Colors.orange,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _openPos,
-                      icon: const Icon(Icons.point_of_sale),
-                      label: const Text('POS'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black87,
+                        backgroundColor:
+                        _isKitchen ? Colors.purple : Colors.orange,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(

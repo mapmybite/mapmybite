@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'truck_page.dart';
+import 'role_selection_page.dart';
+
 
 void main() {
   runApp(const MapMyBiteApp());
@@ -10,9 +11,9 @@ class MapMyBiteApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: TruckPage(),
+      home: const RoleSelectionPage(),
     );
   }
 }

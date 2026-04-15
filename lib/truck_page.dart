@@ -8,7 +8,12 @@ import 'truck_profile_page.dart';
 import 'orders_page.dart';
 
 class TruckPage extends StatefulWidget {
-  const TruckPage({super.key});
+  final bool openOwnerPortalOnStart;
+
+  const TruckPage({
+    super.key,
+    this.openOwnerPortalOnStart = false,
+  });
 
   @override
   State<TruckPage> createState() => _TruckPageState();
@@ -177,8 +182,14 @@ class _TruckPageState extends State<TruckPage> {
   void initState() {
     super.initState();
     _loadIcons();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeUserLocation();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _initializeUserLocation();
+
+      if (!mounted) return;
+
+      if (widget.openOwnerPortalOnStart) {
+        await _openOwnerPortal();
+      }
     });
   }
 
@@ -369,7 +380,10 @@ class _TruckPageState extends State<TruckPage> {
     _openProfilePage(item);
   }
 
-  void _openProfilePage(Map<String, dynamic> item) {
+  void _openProfilePage(
+      Map<String, dynamic> item, {
+        bool isOwner = false,
+      }) {
     if (_isOpeningProfile) return;
 
     _isOpeningProfile = true;
@@ -377,7 +391,10 @@ class _TruckPageState extends State<TruckPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TruckProfilePage(truck: item),
+        builder: (context) => TruckProfilePage(
+          truck: item,
+          isOwner: isOwner,
+        ),
       ),
     ).then((_) {
       _isOpeningProfile = false;
@@ -458,7 +475,7 @@ class _TruckPageState extends State<TruckPage> {
     await _centerOnBusiness(newBusiness, zoom: 15);
 
     if (!mounted) return;
-    _openProfilePage(newBusiness);
+    _openProfilePage(newBusiness, isOwner: true);
   }
 
   String _buildTimingFromResult(Map<String, dynamic> result) {
@@ -767,8 +784,7 @@ class _TruckPageState extends State<TruckPage> {
         onMapCreated: (controller) async {
           mapController = controller;
 
-          if (_currentUserPosition != null &&
-              !_didTryInitialUserCenter) {
+          if (_currentUserPosition != null && !_didTryInitialUserCenter) {
             _didTryInitialUserCenter = true;
             await _animateToLocation(_currentUserPosition!, zoom: 13);
           }

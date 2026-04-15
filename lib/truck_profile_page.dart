@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:geolocator/geolocator.dart';
 import 'menu_page.dart';
 
 import 'order_data.dart';
@@ -805,6 +807,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         'customerLongitude': '',
         'skipLine': true,
       });
+      OrderData.addNotification(
+        audience: 'owner',
+        title: 'New Order',
+        message: '$customerName placed a new order.',
+        business: (widget.truck['title'] ?? '').toString(),
+        customer: customerName,
+        type: 'order',
+      );
 
       Navigator.pop(bottomSheetContext);
 
@@ -821,26 +831,564 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       );
     }
   }
+  void _showPaymentDisclaimer() {
+    bool agreed = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text('Payment Terms'),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Payment Disclaimer & Terms of Service\n",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const Text(
+                      "By proceeding, you acknowledge and agree that Mapmybite is a directory service designed to connect food vendors and customers.\n\n"
+                          "Direct Transactions: Any payments made through third-party platforms (such as Cash App, Venmo, or Zelle) or in-person at the counter are direct transactions solely between you and the vendor.\n\n"
+                          "No Liability: Mapmybite does not process, handle, store, or guarantee any payments. We are not responsible for any issues, disputes, financial loss, or scams that may arise from these third-party or offline transactions.\n\n"
+                          "User Responsibility: You are responsible for verifying the legitimacy of the vendor and the accuracy of the payment details before sending any funds.\n\n"
+                          "By checking the box below, you agree to these terms and accept full responsibility for your payment.",
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: agreed,
+                          onChanged: (val) {
+                            setState(() {
+                              agreed = val ?? false;
+                            });
+                          },
+                        ),
+                        const Expanded(
+                          child: Text(
+                            "I have read and agree to the Terms of Service",
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: agreed
+                      ? () {
+                    Navigator.pop(context);
+
+                    // 👉 OPEN PAYMENT SCREEN AFTER AGREEMENT
+                    _showCustomerPaymentOptions();
+                  }
+                      : null,
+                  child: const Text("Continue"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
   void _showCustomerPaymentOptions() {
+    final int orderIndex = _findLatestOrderIndexForThisTruck();
+
+    if (orderIndex == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No active order found for this truck')),
+      );
+      return;
+    }
+
+    final Map<String, dynamic> order = OrderData.orders[orderIndex];
+
+    final String paymentType =
+    (order['paymentType'] ?? '').toString().trim().toLowerCase();
+    final String paymentStatus =
+    (order['paymentStatus'] ?? '').toString().trim().toLowerCase();
+
+    if (paymentType != 'pay_now') {
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text('Pay at Counter'),
+            content: const Text(
+              'This order is set to Pay at Counter, so no online payment options are needed.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    if (paymentStatus == 'waiting for owner approval') {
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text('Waiting for Owner'),
+            content: const Text(
+              'The owner must accept your order first. After that, payment options will be sent to you.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    if (paymentStatus != 'payment request sent') {
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text('Payment Not Ready'),
+            content: const Text(
+              'The owner has not sent payment options yet.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    final String cashApp = (order['cashApp'] ?? '').toString().trim();
+    final String zelle = (order['zelle'] ?? '').toString().trim();
+    final String venmo = (order['venmo'] ?? '').toString().trim();
+    final String square = (order['square'] ?? '').toString().trim();
+
+    String selectedMethod = '';
+
+    Future<void> openCustomerPaymentUrl(String url) async {
+      final Uri uri = Uri.parse(url);
+
+      final bool launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open payment app or link')),
+        );
+      }
+    }
+
+    Future<void> copyCustomerPaymentValue(String label, String value) async {
+      if (value.trim().isEmpty) return;
+
+      await Clipboard.setData(ClipboardData(text: value));
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$label copied')),
+      );
+    }
+
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Waiting for Owner'),
-          content: const Text(
-            'The owner must accept your order first. After that, payment options will be sent to you.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('OK'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text('Payment Options'),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Owner sent these payment options. Pay using one of them, then tap "I Paid".',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 14),
+                    if (cashApp.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.withOpacity(0.25)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Cash App',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            SelectableText(cashApp),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      selectedMethod = 'cash_app';
+                                    });
+                                    openCustomerPaymentUrl(
+                                      'https://cash.app/\$${cashApp.replaceAll('\$', '')}',
+                                    );
+                                  },
+                                  child: const Text('Open'),
+                                ),
+                                OutlinedButton(
+                                  onPressed: () =>
+                                      copyCustomerPaymentValue('Cash App', cashApp),
+                                  child: const Text('Copy'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (zelle.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.purple.withOpacity(0.25)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Zelle',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            SelectableText(zelle),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      selectedMethod = 'zelle';
+                                    });
+                                    copyCustomerPaymentValue('Zelle', zelle);
+                                  },
+                                  child: const Text('Copy Zelle'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (venmo.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.withOpacity(0.25)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Venmo',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            SelectableText(venmo),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      selectedMethod = 'venmo';
+                                    });
+                                    openCustomerPaymentUrl(
+                                      'https://venmo.com/${venmo.replaceAll('@', '')}',
+                                    );
+                                  },
+                                  child: const Text('Open'),
+                                ),
+                                OutlinedButton(
+                                  onPressed: () =>
+                                      copyCustomerPaymentValue('Venmo', venmo),
+                                  child: const Text('Copy'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (square.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.black.withOpacity(0.15)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Square',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            SelectableText(square),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      selectedMethod = 'square';
+                                    });
+                                    openCustomerPaymentUrl(square);
+                                  },
+                                  child: const Text('Open'),
+                                ),
+                                OutlinedButton(
+                                  onPressed: () =>
+                                      copyCustomerPaymentValue('Square', square),
+                                  child: const Text('Copy'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (cashApp.isEmpty &&
+                        zelle.isEmpty &&
+                        venmo.isEmpty &&
+                        square.isEmpty)
+                      const Text('No payment methods available yet.'),
+                    const SizedBox(height: 10),
+                    if (selectedMethod.isNotEmpty)
+                      Text(
+                        'Selected payment method: $selectedMethod',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Close'),
+                ),
+                ElevatedButton(
+                  onPressed: selectedMethod.isEmpty
+                      ? null
+                      : () {
+                    setState(() {
+                      OrderData.orders[orderIndex]['paymentMethod'] = selectedMethod;
+                      OrderData.orders[orderIndex]['paymentStatus'] = 'Payment Sent';
+
+                      final String business =
+                      (OrderData.orders[orderIndex]['business'] ?? '').toString();
+                      final String customer =
+                      (OrderData.orders[orderIndex]['customer'] ?? '').toString();
+
+                      OrderData.addNotification(
+                        audience: 'owner',
+                        title: 'Payment Sent',
+                        message: '$customer marked payment as sent.',
+                        business: business,
+                        customer: customer,
+                        type: 'payment',
+                      );
+                    });
+
+                    Navigator.pop(dialogContext);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Payment marked as sent. Wait for owner to confirm payment received.',
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('I Paid'),
+                ),
+              ],
+            );
+          },
         );
       },
+    );
+  }
+  int _findLatestOrderIndexForThisTruck() {
+    final String businessName = (widget.truck['title'] ?? '').toString().trim();
+
+    for (int i = OrderData.orders.length - 1; i >= 0; i--) {
+      final order = OrderData.orders[i];
+      final String business = (order['business'] ?? '').toString().trim();
+
+      if (business == businessName && order['orderType'] != 'pos') {
+        return i;
+      }
+    }
+
+    return -1;
+  }
+
+  bool _canShowImHereButton(Map<String, dynamic> order) {
+    final String status = (order['status'] ?? '').toString().trim().toLowerCase();
+
+    return status == 'accepted' ||
+        status == 'preparing' ||
+        status == 'ready' ||
+        status == 'arrived';
+  }
+
+  Future<void> _handleImHereTap() async {
+    final int orderIndex = _findLatestOrderIndexForThisTruck();
+
+    if (orderIndex == -1) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No active order found for this truck')),
+      );
+      return;
+    }
+
+    final Map<String, dynamic> order = OrderData.orders[orderIndex];
+
+    if (!_canShowImHereButton(order)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can use I\'m Here after the owner accepts the order'),
+        ),
+      );
+      return;
+    }
+
+    final double? truckLat = _truckLatitude();
+    final double? truckLng = _truckLongitude();
+
+    if (truckLat == null || truckLng == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Truck location is not available')),
+      );
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location permission is required')),
+      );
+      return;
+    }
+
+    final Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    final double distanceMeters = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      truckLat,
+      truckLng,
+    );
+
+    if (distanceMeters > 200) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be near the truck to use I\'m Here'),
+        ),
+      );
+      return;
+    }
+
+    final DateTime now = DateTime.now();
+    final String arrivedAt =
+        '${now.month}/${now.day}/${now.year} ${TimeOfDay.fromDateTime(now).format(context)}';
+
+    setState(() {
+      OrderData.markCustomerArrived(
+        index: orderIndex,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        distanceMeters: distanceMeters,
+        arrivedAt: arrivedAt,
+      );
+    });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('You are checked in. Owner can see you now.')),
     );
   }
   void _showPosCheckoutBottomSheet() {
@@ -2009,36 +2557,70 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                   ),
                 ],
               )
-                  : Row(
+                  : Column(
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        if (!_canUseOrdering) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'This seller has not enabled in-app ordering yet. Please contact them directly.',
-                              ),
-                            ),
-                          );
-                          return;
-                        }
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            if (!_canUseOrdering) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'This seller has not enabled in-app ordering yet. Please contact them directly.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
 
-                        _showOrderBottomSheet();
-                      },
-                      icon: Icon(
-                        _isKitchen ? Icons.schedule : Icons.shopping_bag,
+                            _showOrderBottomSheet();
+                          },
+                          icon: Icon(
+                            _isKitchen ? Icons.schedule : Icons.shopping_bag,
+                          ),
+                          label: Text(
+                            !_canUseOrdering
+                                ? 'Contact Seller'
+                                : (_isKitchen ? 'Schedule Pre-Order' : 'Build Order'),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                            _isKitchen ? Colors.purple : Colors.orange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                       ),
-                      label: Text(
-                        !_canUseOrdering
-                            ? 'Contact Seller'
-                            : (_isKitchen ? 'Schedule Pre-Order' : 'Build Order'),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _handleImHereTap,
+                      icon: const Icon(Icons.location_on),
+                      label: const Text("I'm Here"),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                        _isKitchen ? Colors.purple : Colors.orange,
-                        foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _showPaymentDisclaimer,
+                      icon: const Icon(Icons.payments_outlined),
+                      label: const Text('Pay Now / Payment Options'),
+                      style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -2049,6 +2631,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 ],
               ),
             ),
+
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),

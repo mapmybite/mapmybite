@@ -25,6 +25,34 @@ class _OrdersPageState extends State<OrdersPage> {
           OrderData.orders[index]['paymentStatus'] = 'Paid';
         }
       }
+
+      final String business =
+      (OrderData.orders[index]['business'] ?? '').toString();
+      final String customer =
+      (OrderData.orders[index]['customer'] ?? '').toString();
+
+      String notificationMessage = 'Your order status is now $newStatus.';
+
+      if (newStatus == 'Accepted') {
+        notificationMessage = 'Your order was accepted by $business.';
+      } else if (newStatus == 'Preparing') {
+        notificationMessage = 'Your order is now being prepared.';
+      } else if (newStatus == 'Ready') {
+        notificationMessage = 'Your order is ready for pickup.';
+      } else if (newStatus == 'Completed') {
+        notificationMessage = 'Your order was completed. Thank you!';
+      } else if (newStatus == 'Rejected') {
+        notificationMessage = 'Your order was rejected.';
+      }
+
+      OrderData.addNotification(
+        audience: 'customer',
+        title: 'Order Update',
+        message: notificationMessage,
+        business: business,
+        customer: customer,
+        type: 'order_status',
+      );
     });
 
     if (!mounted) return;
@@ -38,6 +66,20 @@ class _OrdersPageState extends State<OrdersPage> {
     setState(() {
       OrderData.orders[index]['status'] = 'Rejected';
       OrderData.orders[index]['transactionComplete'] = false;
+
+      final String business =
+      (OrderData.orders[index]['business'] ?? '').toString();
+      final String customer =
+      (OrderData.orders[index]['customer'] ?? '').toString();
+
+      OrderData.addNotification(
+        audience: 'customer',
+        title: 'Order Rejected',
+        message: 'Your order was rejected by $business.',
+        business: business,
+        customer: customer,
+        type: 'order_status',
+      );
     });
 
     if (!mounted) return;
@@ -50,6 +92,20 @@ class _OrdersPageState extends State<OrdersPage> {
   void _markPaymentRequestSent(int index) {
     setState(() {
       OrderData.orders[index]['paymentStatus'] = 'Payment Request Sent';
+
+      final String business =
+      (OrderData.orders[index]['business'] ?? '').toString();
+      final String customer =
+      (OrderData.orders[index]['customer'] ?? '').toString();
+
+      OrderData.addNotification(
+        audience: 'customer',
+        title: 'Payment Request',
+        message: '$business sent you payment options.',
+        business: business,
+        customer: customer,
+        type: 'payment',
+      );
     });
 
     if (!mounted) return;
@@ -62,6 +118,29 @@ class _OrdersPageState extends State<OrdersPage> {
   void _markPaymentReceived(int index) {
     setState(() {
       OrderData.orders[index]['paymentStatus'] = 'Paid';
+
+      final String business =
+      (OrderData.orders[index]['business'] ?? '').toString();
+      final String customer =
+      (OrderData.orders[index]['customer'] ?? '').toString();
+
+      OrderData.addNotification(
+        audience: 'customer',
+        title: 'Payment Confirmed',
+        message: '$business confirmed your payment.',
+        business: business,
+        customer: customer,
+        type: 'payment',
+      );
+
+      OrderData.addNotification(
+        audience: 'owner',
+        title: 'Payment Received',
+        message: 'Payment was confirmed for $customer.',
+        business: business,
+        customer: customer,
+        type: 'payment',
+      );
     });
 
     if (!mounted) return;
@@ -413,12 +492,15 @@ class _OrdersPageState extends State<OrdersPage> {
           final bool isRejected = status == 'Rejected';
           final bool isAccepted = status == 'Accepted';
           final bool isPreparing = status == 'Preparing';
+          final bool isArrived = status == 'Arrived';
           final bool isReady = status == 'Ready';
           final bool isCompleted = status == 'Completed';
           final bool isPaid = paymentStatus.toLowerCase() == 'paid';
+          final bool isPaymentSent =
+              paymentStatus.toLowerCase() == 'payment sent';
 
           final bool canStartPreparing =
-              isAccepted &&
+              (isAccepted || isArrived) &&
                   !isRejected &&
                   !isCompleted &&
                   (isPayAtCounterOrder || isPaid || isPosOrder);
@@ -431,11 +513,11 @@ class _OrdersPageState extends State<OrdersPage> {
                   !isPaid;
 
           final bool showPaymentReceived =
-              isAccepted &&
+              (isAccepted || isArrived) &&
                   !isRejected &&
                   !isCompleted &&
                   isPayNowOrder &&
-                  !isPaid;
+                  isPaymentSent;
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -491,6 +573,8 @@ class _OrdersPageState extends State<OrdersPage> {
                     paymentStatus,
                     valueColor: isPaid
                         ? Colors.green
+                        : isPaymentSent
+                        ? Colors.blue
                         : isPayAtCounterOrder
                         ? Colors.orange
                         : Colors.redAccent,
@@ -501,6 +585,34 @@ class _OrdersPageState extends State<OrdersPage> {
                       'Customer is here',
                       valueColor: Colors.green,
                       valueWeight: FontWeight.bold,
+                    ),
+                  if ((order['arrivedAt'] ?? '').toString().trim().isNotEmpty)
+                    _infoLine(
+                      'Arrived At',
+                      (order['arrivedAt'] ?? '').toString(),
+                      valueColor: Colors.green,
+                      valueWeight: FontWeight.w600,
+                    ),
+                  if (order['arrivalDistanceMeters'] != null)
+                    _infoLine(
+                      'Distance',
+                      '${((order['arrivalDistanceMeters'] as num).toDouble()).toStringAsFixed(0)} m',
+                      valueColor: Colors.green,
+                      valueWeight: FontWeight.w600,
+                    ),
+                  if ((order['customerLatitude'] ?? '')
+                      .toString()
+                      .trim()
+                      .isNotEmpty &&
+                      (order['customerLongitude'] ?? '')
+                          .toString()
+                          .trim()
+                          .isNotEmpty)
+                    _infoLine(
+                      'Arrival Location',
+                      '${order['customerLatitude']}, ${order['customerLongitude']}',
+                      valueColor: Colors.black87,
+                      valueWeight: FontWeight.w500,
                     ),
                   if (total.trim().isNotEmpty)
                     _infoLine(
@@ -539,7 +651,7 @@ class _OrdersPageState extends State<OrdersPage> {
                         child: const Text('Preparing'),
                       ),
                       ElevatedButton(
-                        onPressed: isPreparing
+                        onPressed: (isPreparing || isArrived)
                             ? () => _updateStatus(index, 'Ready')
                             : null,
                         child: const Text('Ready'),

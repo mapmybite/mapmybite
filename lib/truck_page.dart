@@ -183,7 +183,7 @@ class _TruckPageState extends State<TruckPage> {
     super.initState();
     _loadIcons();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _initializeUserLocation();
+
 
       if (!mounted) return;
 

@@ -1342,6 +1342,30 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       permission = await Geolocator.requestPermission();
     }
 
+    if (permission == LocationPermission.denied) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location permission denied')),
+      );
+      return;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Location permission permanently denied. Open settings.'),
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () {
+              Geolocator.openAppSettings();
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       if (!mounted) return;

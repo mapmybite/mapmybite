@@ -31,7 +31,6 @@ class OrderData {
   }) {
     if (index < 0 || index >= orders.length) return;
 
-    orders[index]['status'] = 'Arrived';
     orders[index]['customerAtLocation'] = true;
     orders[index]['customerLatitude'] = latitude;
     orders[index]['customerLongitude'] = longitude;

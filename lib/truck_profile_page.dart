@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'menu_page.dart';
 
 import 'order_data.dart';
+import 'notification_data.dart';
 
 
 
@@ -807,6 +808,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         'customerLongitude': '',
         'skipLine': true,
       });
+      NotificationData.addNotification(
+        title: 'New Order',
+        message: '$customerName placed a new order 🍽️',
+      );
       OrderData.addNotification(
         audience: 'owner',
         title: 'New Order',
@@ -1295,11 +1300,28 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
   bool _canShowImHereButton(Map<String, dynamic> order) {
     final String status = (order['status'] ?? '').toString().trim().toLowerCase();
+    final String paymentType =
+    (order['paymentType'] ?? '').toString().trim().toLowerCase();
+    final String paymentStatus =
+    (order['paymentStatus'] ?? '').toString().trim().toLowerCase();
 
+    final bool isCompleted = status == 'completed' || status == 'rejected';
+    if (isCompleted) return false;
+
+    /// Pay at Counter → allow early check-in
+    if (paymentType == 'pay_later' || paymentType == 'pay_at_counter') {
+      return true;
+    }
+
+    /// Pay Now → allow only after payment is done
+    if (paymentType == 'pay_now') {
+      return paymentStatus == 'paid';
+    }
+
+    /// fallback (just in case)
     return status == 'accepted' ||
         status == 'preparing' ||
-        status == 'ready' ||
-        status == 'arrived';
+        status == 'ready';
   }
 
   Future<void> _handleImHereTap() async {
@@ -1319,7 +1341,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('You can use I\'m Here after the owner accepts the order'),
+          content: Text('Complete payment first, then tap "I\'m Here" when you arrive'),
         ),
       );
       return;
@@ -1411,6 +1433,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     });
 
     if (!mounted) return;
+
+
+
+    NotificationData.addNotification(
+      title: 'Customer Arrived',
+      message: 'Customer has arrived at your location 📍',
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('You are checked in. Owner can see you now.')),
     );

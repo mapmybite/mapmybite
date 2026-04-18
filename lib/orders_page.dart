@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'order_data.dart';
+import 'notification_data.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -17,6 +19,10 @@ class _OrdersPageState extends State<OrdersPage> {
 
       final order = OrderData.orders[index];
       final bool isPayAtCounter = _isPayAtCounterOrder(order);
+      final String business =
+      (OrderData.orders[index]['business'] ?? '').toString();
+      final String customer =
+      (OrderData.orders[index]['customer'] ?? '').toString();
 
       if (newStatus == 'Completed') {
         OrderData.orders[index]['transactionComplete'] = true;
@@ -24,12 +30,12 @@ class _OrdersPageState extends State<OrdersPage> {
         if (isPayAtCounter) {
           OrderData.orders[index]['paymentStatus'] = 'Paid';
         }
+        NotificationData.removeNotificationsWhere(
+          messageContains: customer,
+        );
       }
 
-      final String business =
-      (OrderData.orders[index]['business'] ?? '').toString();
-      final String customer =
-      (OrderData.orders[index]['customer'] ?? '').toString();
+
 
       String notificationMessage = 'Your order status is now $newStatus.';
 
@@ -38,12 +44,27 @@ class _OrdersPageState extends State<OrdersPage> {
       } else if (newStatus == 'Preparing') {
         notificationMessage = 'Your order is now being prepared.';
       } else if (newStatus == 'Ready') {
-        notificationMessage = 'Your order is ready for pickup.';
+        if (isPayAtCounter) {
+          notificationMessage =
+          'Your order is ready. Please pay at counter and pick up your order.';
+        } else {
+          notificationMessage = 'Your order is ready for pickup.';
+        }
       } else if (newStatus == 'Completed') {
         notificationMessage = 'Your order was completed. Thank you!';
       } else if (newStatus == 'Rejected') {
         notificationMessage = 'Your order was rejected.';
       }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Order updated: $newStatus')),
+      );
+
+      NotificationData.addNotification(
+        title: 'Order Update',
+        message: notificationMessage,
+      );
 
       OrderData.addNotification(
         audience: 'customer',
@@ -100,11 +121,15 @@ class _OrdersPageState extends State<OrdersPage> {
 
       OrderData.addNotification(
         audience: 'customer',
-        title: 'Payment Request',
-        message: '$business sent you payment options.',
+        title: 'Payment Required',
+        message: '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
         business: business,
         customer: customer,
         type: 'payment',
+      );
+      NotificationData.addNotification(
+        title: 'Payment Required',
+        message: '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
       );
     });
 
@@ -173,6 +198,129 @@ class _OrdersPageState extends State<OrdersPage> {
         const SnackBar(content: Text('App not installed or cannot open')),
       );
     }
+  }
+  Future<void> _openArrivalDirections({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final Uri uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open maps')),
+      );
+    }
+  }
+
+  Widget _buildArrivalMapCard(Map<String, dynamic> order) {
+    final double? lat = double.tryParse(
+      (order['customerLatitude'] ?? '').toString(),
+    );
+    final double? lng = double.tryParse(
+      (order['customerLongitude'] ?? '').toString(),
+    );
+
+    if (lat == null || lng == null) {
+      return const SizedBox.shrink();
+    }
+
+    final String arrivedAt = (order['arrivedAt'] ?? '').toString().trim();
+    final String distanceText = order['arrivalDistanceMeters'] != null
+        ? '${((order['arrivalDistanceMeters'] as num).toDouble()).toStringAsFixed(0)} m away'
+        : 'Customer checked in';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 6),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.green.withOpacity(0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Customer Arrival Snapshot',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  distanceText,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (arrivedAt.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Checked in at $arrivedAt',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(14),
+            ),
+            child: SizedBox(
+              height: 170,
+              width: double.infinity,
+              child: GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(lat, lng),
+                  zoom: 16,
+                ),
+                markers: {
+                  Marker(
+                    markerId: const MarkerId('customer_arrival'),
+                    position: LatLng(lat, lng),
+                    infoWindow: const InfoWindow(title: 'Customer location'),
+                  ),
+                },
+                zoomControlsEnabled: false,
+                myLocationButtonEnabled: false,
+                mapToolbarEnabled: true,
+                liteModeEnabled: true,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: () => _openArrivalDirections(
+                  latitude: lat,
+                  longitude: lng,
+                ),
+                icon: const Icon(Icons.directions),
+                label: const Text('Open in Maps'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   bool _isPayNowOrder(Map<String, dynamic> order) {
@@ -492,7 +640,7 @@ class _OrdersPageState extends State<OrdersPage> {
           final bool isRejected = status == 'Rejected';
           final bool isAccepted = status == 'Accepted';
           final bool isPreparing = status == 'Preparing';
-          final bool isArrived = status == 'Arrived';
+          final bool isArrived = order['customerAtLocation'] == true;
           final bool isReady = status == 'Ready';
           final bool isCompleted = status == 'Completed';
           final bool isPaid = paymentStatus.toLowerCase() == 'paid';
@@ -500,7 +648,7 @@ class _OrdersPageState extends State<OrdersPage> {
               paymentStatus.toLowerCase() == 'payment sent';
 
           final bool canStartPreparing =
-              (isAccepted || isArrived) &&
+              isAccepted &&
                   !isRejected &&
                   !isCompleted &&
                   (isPayAtCounterOrder || isPaid || isPosOrder);
@@ -513,7 +661,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   !isPaid;
 
           final bool showPaymentReceived =
-              (isAccepted || isArrived) &&
+              isAccepted &&
                   !isRejected &&
                   !isCompleted &&
                   isPayNowOrder &&
@@ -600,20 +748,9 @@ class _OrdersPageState extends State<OrdersPage> {
                       valueColor: Colors.green,
                       valueWeight: FontWeight.w600,
                     ),
-                  if ((order['customerLatitude'] ?? '')
-                      .toString()
-                      .trim()
-                      .isNotEmpty &&
-                      (order['customerLongitude'] ?? '')
-                          .toString()
-                          .trim()
-                          .isNotEmpty)
-                    _infoLine(
-                      'Arrival Location',
-                      '${order['customerLatitude']}, ${order['customerLongitude']}',
-                      valueColor: Colors.black87,
-                      valueWeight: FontWeight.w500,
-                    ),
+                  if ((order['customerLatitude'] ?? '').toString().trim().isNotEmpty &&
+                      (order['customerLongitude'] ?? '').toString().trim().isNotEmpty)
+                    _buildArrivalMapCard(order),
                   if (total.trim().isNotEmpty)
                     _infoLine(
                       'Total',
@@ -651,7 +788,7 @@ class _OrdersPageState extends State<OrdersPage> {
                         child: const Text('Preparing'),
                       ),
                       ElevatedButton(
-                        onPressed: (isPreparing || isArrived)
+                        onPressed: isPreparing
                             ? () => _updateStatus(index, 'Ready')
                             : null,
                         child: const Text('Ready'),

@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import 'owner_portal_page.dart';
 import 'truck_profile_page.dart';
 import 'orders_page.dart';
+import 'package:mapmybite/notification_data.dart';
+import 'package:mapmybite/notifications_page.dart';
 
 class TruckPage extends StatefulWidget {
   final bool openOwnerPortalOnStart;
@@ -691,6 +693,55 @@ class _TruckPageState extends State<TruckPage> {
             tooltip: 'My Location',
             icon: const Icon(Icons.my_location),
             onPressed: _centerOnUserLocation,
+          ),
+          ValueListenableBuilder<List<Map<String, String>>>(
+            valueListenable: NotificationData.notifications,
+            builder: (context, notifications, _) {
+              return Stack(
+                children: [
+                  IconButton(
+                    tooltip: 'Notifications',
+                    icon: const Icon(Icons.notifications_none),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationsPage(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  if (notifications.isNotEmpty)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          notifications.length > 9
+                              ? '9+'
+                              : notifications.length.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),

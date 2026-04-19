@@ -613,7 +613,8 @@ class _OrdersPageState extends State<OrdersPage> {
 
           final String status = (order['status'] ?? 'Pending').toString();
           final String business = (order['business'] ?? '').toString();
-          final String items = (order['items'] ?? '').toString();
+          final String rawItems = (order['items'] ?? '').toString().trim();
+          final String items = rawItems.isNotEmpty ? rawItems : 'No items';
           final String customer = (order['customer'] ?? '').toString();
           final String phone = (order['phone'] ?? '').toString();
           final String total = (order['total'] ?? '').toString();

@@ -11,7 +11,7 @@ class OrderData {
     String type = 'general',
   }) {
     notifications.insert(0, {
-      'audience': audience, // customer / owner / all
+      'audience': audience,
       'title': title,
       'message': message,
       'business': business,
@@ -46,5 +46,40 @@ class OrderData {
       customer: (orders[index]['customer'] ?? '').toString(),
       type: 'arrival',
     );
+  }
+
+  static List<Map<String, dynamic>> getCustomerOrders() {
+    final filtered = List<Map<String, dynamic>>.from(orders);
+
+    filtered.sort((a, b) {
+      final DateTime aTime = _parseDateTime(
+        a['createdAt'] ??
+            a['orderedAt'] ??
+            a['placedAt'] ??
+            a['dateTime'] ??
+            a['timestamp'] ??
+            a['date'],
+      );
+      final DateTime bTime = _parseDateTime(
+        b['createdAt'] ??
+            b['orderedAt'] ??
+            b['placedAt'] ??
+            b['dateTime'] ??
+            b['timestamp'] ??
+            b['date'],
+      );
+      return bTime.compareTo(aTime);
+    });
+
+    return filtered;
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.fromMillisecondsSinceEpoch(0);
+
+    final text = value.toString().trim();
+    if (text.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0);
+
+    return DateTime.tryParse(text) ?? DateTime.fromMillisecondsSinceEpoch(0);
   }
 }

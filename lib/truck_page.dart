@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'owner_portal_page.dart';
 import 'truck_profile_page.dart';
 import 'orders_page.dart';
+import 'customer_order_history_page.dart';
 import 'package:mapmybite/notification_data.dart';
 import 'package:mapmybite/notifications_page.dart';
 
@@ -185,8 +186,6 @@ class _TruckPageState extends State<TruckPage> {
     super.initState();
     _loadIcons();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-
-
       if (!mounted) return;
 
       if (widget.openOwnerPortalOnStart) {
@@ -649,7 +648,8 @@ class _TruckPageState extends State<TruckPage> {
                           const Icon(Icons.arrow_forward_ios, size: 18),
                           onTap: () {
                             Navigator.of(sheetContext).pop();
-                            WidgetsBinding.instance.addPostFrameCallback((_) async {
+                            WidgetsBinding.instance
+                                .addPostFrameCallback((_) async {
                               if (!mounted) return;
                               await _centerOnBusiness(item, zoom: 15);
                               _openProfilePage(item);
@@ -679,6 +679,15 @@ class _TruckPageState extends State<TruckPage> {
     await _animateToLocation(_defaultUsaPosition, zoom: 9);
   }
 
+  void _openCustomerOrderHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CustomerOrderHistoryPage(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -689,6 +698,11 @@ class _TruckPageState extends State<TruckPage> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: 'My Orders',
+            icon: const Icon(Icons.receipt_long),
+            onPressed: _openCustomerOrderHistory,
+          ),
           IconButton(
             tooltip: 'My Location',
             icon: const Icon(Icons.my_location),
@@ -711,7 +725,6 @@ class _TruckPageState extends State<TruckPage> {
                       );
                     },
                   ),
-
                   if (notifications.isNotEmpty)
                     Positioned(
                       right: 6,

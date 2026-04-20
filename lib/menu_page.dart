@@ -379,6 +379,7 @@ class _MenuPageState extends State<MenuPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('$displayName added to cart'),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
 

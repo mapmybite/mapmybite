@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
@@ -223,6 +224,19 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     final VideoPlayerController controller = VideoPlayerController.file(file);
 
     await controller.initialize();
+    final Duration duration = controller.value.duration;
+
+    if (duration.inSeconds > 30) {
+      await controller.dispose();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Story video must be 30 seconds or less'),
+        ),
+      );
+      return;
+    }
     await controller.setLooping(false);
 
     setState(() {
@@ -377,7 +391,87 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       }
     }
   }
+  Future<void> _pickCurrentLocationForAddress() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
 
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permission denied')),
+        );
+        return;
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Location permission permanently denied. Please enable it in phone settings.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      String fullAddress = '';
+
+      if (placemarks.isNotEmpty) {
+        final Placemark place = placemarks.first;
+
+        final String placeName = (place.name ?? '').trim();
+        final String street = (place.street ?? '').trim();
+
+        String streetLine = street;
+        if (streetLine.isEmpty) {
+          streetLine = placeName;
+        } else if (placeName.isNotEmpty &&
+            !street.toLowerCase().startsWith(placeName.toLowerCase())) {
+          streetLine = '$placeName, $street';
+        }
+
+        final List<String> parts = [
+          streetLine,
+          place.locality ?? '',
+          place.administrativeArea ?? '',
+          place.postalCode ?? '',
+          place.country ?? '',
+        ].where((part) => part.trim().isNotEmpty).toList();
+
+        fullAddress = parts.join(', ');
+      }
+
+      setState(() {
+        addressController.text = fullAddress.isNotEmpty
+            ? fullAddress
+            : '${position.latitude}, ${position.longitude}';
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Current location added to address')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not get current location: $e')),
+      );
+    }
+  }
   Future<void> _submitForm() async {
     if (nameController.text.trim().isEmpty ||
         cuisineController.text.trim().isEmpty) {
@@ -498,6 +592,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     required TextEditingController controller,
     int maxLines = 1,
     bool readOnly = false,
+    Widget? suffixIcon,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -508,6 +603,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
         decoration: InputDecoration(
           prefixIcon: Icon(icon),
           hintText: hintText,
+          suffixIcon: suffixIcon,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -1250,6 +1346,11 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
               icon: Icons.location_on,
               hintText: 'Current Location / Address',
               controller: addressController,
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.my_location),
+                tooltip: 'Use current location',
+                onPressed: _pickCurrentLocationForAddress,
+              ),
             ),
             _buildTextField(
               icon: Icons.access_time,

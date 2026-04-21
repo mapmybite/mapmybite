@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'order_data.dart';
 import 'notification_data.dart';
+import 'local_notification_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class OrdersPage extends StatefulWidget {
@@ -65,6 +66,10 @@ class _OrdersPageState extends State<OrdersPage> {
         title: 'Order Update',
         message: notificationMessage,
       );
+      LocalNotificationService.showNotification(
+        title: 'Order Update',
+        body: notificationMessage,
+      );
 
       OrderData.addNotification(
         audience: 'customer',
@@ -101,6 +106,15 @@ class _OrdersPageState extends State<OrdersPage> {
         customer: customer,
         type: 'order_status',
       );
+      NotificationData.addNotification(
+        title: 'Order Rejected',
+        message: 'Your order was rejected by $business.',
+      );
+
+      LocalNotificationService.showNotification(
+        title: 'Order Rejected',
+        body: 'Your order was rejected by $business.',
+      );
     });
 
     if (!mounted) return;
@@ -130,6 +144,10 @@ class _OrdersPageState extends State<OrdersPage> {
       NotificationData.addNotification(
         title: 'Payment Required',
         message: '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
+      );
+      LocalNotificationService.showNotification(
+        title: 'Payment Required',
+        body: '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
       );
     });
 
@@ -165,6 +183,15 @@ class _OrdersPageState extends State<OrdersPage> {
         business: business,
         customer: customer,
         type: 'payment',
+      );
+      NotificationData.addNotification(
+        title: 'Payment Received',
+        message: 'Payment was confirmed for $customer.',
+      );
+
+      LocalNotificationService.showNotification(
+        title: 'Payment Received',
+        body: 'Payment was confirmed for $customer.',
       );
     });
 

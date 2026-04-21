@@ -10,6 +10,7 @@ import 'menu_page.dart';
 
 import 'order_data.dart';
 import 'notification_data.dart';
+import 'local_notification_service.dart';
 
 
 
@@ -601,6 +602,62 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       _selectedMenuTotal = 0.0;
     });
   }
+  Widget _buildServiceBadges() {
+    final bool hasDaily = widget.truck['dailySpecials'] == true;
+    final bool hasCatering = widget.truck['cateringAvailable'] == true;
+    final bool hasTiffin = widget.truck['tiffinService'] == true;
+
+    if (!hasDaily && !hasCatering && !hasTiffin) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(
+          'DEBUG services: daily=${widget.truck['dailySpecials']} | catering=${widget.truck['cateringAvailable']} | tiffin=${widget.truck['tiffinService']}',
+          style: const TextStyle(fontSize: 12, color: Colors.red),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (hasDaily)
+            _buildBadge('Daily Specials', Icons.local_offer, Colors.orange),
+          if (hasCatering)
+            _buildBadge('Catering', Icons.restaurant, Colors.blue),
+          if (hasTiffin)
+            _buildBadge('Tiffin', Icons.lunch_dining, Colors.green),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadge(String text, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildSummaryRow(String label, String value) {
     return Padding(
@@ -811,6 +868,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       NotificationData.addNotification(
         title: 'New Order',
         message: '$customerName placed a new order 🍽️',
+      );
+      LocalNotificationService.showNotification(
+        title: 'New Order',
+        body: '$customerName placed a new order 🍽️',
       );
       OrderData.addNotification(
         audience: 'owner',
@@ -1262,6 +1323,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                         customer: customer,
                         type: 'payment',
                       );
+                      NotificationData.addNotification(
+                        title: 'Payment Sent',
+                        message: '$customer marked payment as sent.',
+                      );
+                      LocalNotificationService.showNotification(
+                        title: 'Payment Sent',
+                        body: '$customer marked payment as sent.',
+                      );
                     });
 
                     Navigator.pop(dialogContext);
@@ -1439,6 +1508,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     NotificationData.addNotification(
       title: 'Customer Arrived',
       message: 'Customer has arrived at your location 📍',
+    );
+    LocalNotificationService.showNotification(
+      title: 'Customer Arrived',
+      body: 'Customer has arrived at your location 📍',
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -2300,6 +2373,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 ),
               ),
             ),
+            _buildServiceBadges(),
 
             const SizedBox(height: 12),
 

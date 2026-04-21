@@ -437,6 +437,11 @@ class _TruckPageState extends State<TruckPage> {
       'menu': result['menu'] ?? '',
       'menuItems': result['menuItems'] ?? [],
       'description': result['description'] ?? '',
+
+      'dailySpecials': result['dailySpecials'] ?? false,
+      'cateringAvailable': result['cateringAvailable'] ?? false,
+      'tiffinService': result['tiffinService'] ?? false,
+
       'image': result['bannerImage'] ?? _pickMainImage(result),
       'bannerImage': result['bannerImage'] ?? '',
       'galleryImages': _normalizeGalleryImages(result['galleryImages']),

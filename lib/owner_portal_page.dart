@@ -54,6 +54,9 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   List<StoryVideoItem> storyVideos = [];
 
   bool wantsVerification = false;
+  bool hasDailySpecials = false;
+  bool hasCatering = false;
+  bool hasTiffin = false;
   String verificationStatus = 'not_started';
 
   int get _galleryLimit {
@@ -568,6 +571,9 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       'menu': menuController.text.trim(),
       'menuItems': ownerMenuItems.take(_menuItemLimit).toList(),
       'description': descriptionController.text.trim(),
+      'dailySpecials': hasDailySpecials,
+      'cateringAvailable': hasCatering,
+      'tiffinService': hasTiffin,
       'image': bannerImage?.path ?? '',
       'bannerImage': bannerImage?.path ?? '',
       'galleryImages': galleryImages.map((e) => e.path).toList(),
@@ -1374,6 +1380,59 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
               hintText: 'Description',
               controller: descriptionController,
               maxLines: 3,
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Extra Services',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    value: hasDailySpecials,
+                    onChanged: (value) {
+                      setState(() {
+                        hasDailySpecials = value;
+                      });
+                    },
+                    title: const Text('Daily Specials Available'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  SwitchListTile(
+                    value: hasCatering,
+                    onChanged: (value) {
+                      setState(() {
+                        hasCatering = value;
+                      });
+                    },
+                    title: const Text('Catering Available'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  SwitchListTile(
+                    value: hasTiffin,
+                    onChanged: (value) {
+                      setState(() {
+                        hasTiffin = value;
+                      });
+                    },
+                    title: const Text('Tiffin Service Available'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 8),
             _buildBannerSection(),

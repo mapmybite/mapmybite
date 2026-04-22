@@ -27,6 +27,10 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController menuController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController dailySpecialsDetailsController = TextEditingController();
+  final TextEditingController cateringDetailsController = TextEditingController();
+  final TextEditingController tiffinDetailsController = TextEditingController();
+
 
   final TextEditingController instagramController = TextEditingController();
   final TextEditingController facebookController = TextEditingController();
@@ -117,6 +121,9 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     phoneController.dispose();
     menuController.dispose();
     descriptionController.dispose();
+    dailySpecialsDetailsController.dispose();
+    cateringDetailsController.dispose();
+    tiffinDetailsController.dispose();
 
     instagramController.dispose();
     facebookController.dispose();
@@ -572,8 +579,11 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       'menuItems': ownerMenuItems.take(_menuItemLimit).toList(),
       'description': descriptionController.text.trim(),
       'dailySpecials': hasDailySpecials,
+      'dailySpecialsDetails': dailySpecialsDetailsController.text.trim(),
       'cateringAvailable': hasCatering,
+      'cateringDetails': cateringDetailsController.text.trim(),
       'tiffinService': hasTiffin,
+      'tiffinDetails': tiffinDetailsController.text.trim(),
       'image': bannerImage?.path ?? '',
       'bannerImage': bannerImage?.path ?? '',
       'galleryImages': galleryImages.map((e) => e.path).toList(),
@@ -1411,6 +1421,13 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                     title: const Text('Daily Specials Available'),
                     contentPadding: EdgeInsets.zero,
                   ),
+                  if (hasDailySpecials)
+                    _buildTextField(
+                      icon: Icons.local_offer,
+                      hintText: 'Today special details (example: Paneer wrap + mango lassi combo for \$12.99)',
+                      controller: dailySpecialsDetailsController,
+                      maxLines: 3,
+                    ),
                   SwitchListTile(
                     value: hasCatering,
                     onChanged: (value) {
@@ -1421,6 +1438,13 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                     title: const Text('Catering Available'),
                     contentPadding: EdgeInsets.zero,
                   ),
+                  if (hasCatering)
+                    _buildTextField(
+                      icon: Icons.event_available,
+                      hintText: 'Catering details (example: Parties, office lunch, minimum 20 people, 2 days notice)',
+                      controller: cateringDetailsController,
+                      maxLines: 3,
+                    ),
                   SwitchListTile(
                     value: hasTiffin,
                     onChanged: (value) {
@@ -1431,6 +1455,13 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                     title: const Text('Tiffin Service Available'),
                     contentPadding: EdgeInsets.zero,
                   ),
+                  if (hasTiffin)
+                    _buildTextField(
+                      icon: Icons.food_bank,
+                      hintText: 'Tiffin details (example: Weekly and monthly veg meal plans available)',
+                      controller: tiffinDetailsController,
+                      maxLines: 3,
+                    ),
                 ],
               ),
             ),

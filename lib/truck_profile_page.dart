@@ -624,38 +624,118 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         runSpacing: 8,
         children: [
           if (hasDaily)
-            _buildBadge('Daily Specials', Icons.local_offer, Colors.orange),
+            _buildBadge(
+              'Daily Specials',
+              Icons.local_offer,
+              Colors.orange,
+              onTap: () => _showServiceInfo(
+                'Today\'s Special',
+                (widget.truck['dailySpecialsDetails'] ?? '').toString(),
+              ),
+            ),
           if (hasCatering)
-            _buildBadge('Catering', Icons.restaurant, Colors.blue),
+            _buildBadge(
+              'Catering',
+              Icons.restaurant,
+              Colors.blue,
+              onTap: () => _showServiceInfo(
+                'Catering',
+                (widget.truck['cateringDetails'] ?? '').toString(),
+              ),
+            ),
           if (hasTiffin)
-            _buildBadge('Tiffin', Icons.lunch_dining, Colors.green),
+            _buildBadge(
+              'Tiffin',
+              Icons.lunch_dining,
+              Colors.green,
+              onTap: () => _showServiceInfo(
+                'Tiffin Service',
+                (widget.truck['tiffinDetails'] ?? '').toString(),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildBadge(String text, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+  Widget _buildBadge(
+      String text,
+      IconData icon,
+      Color color, {
+        VoidCallback? onTap,
+      }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                text,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+  void _showServiceInfo(String title, String details) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                details.trim().isEmpty ? 'No details added yet.' : details,
+                style: const TextStyle(
+                  fontSize: 15,
+                  height: 1.45,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -2674,7 +2754,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       icon: const Icon(Icons.point_of_sale),
                       label: const Text('POS'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black87,
+                        backgroundColor: Colors.orange.shade600,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(

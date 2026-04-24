@@ -32,6 +32,7 @@ class _TruckPageState extends State<TruckPage> {
   bool _isOpeningProfile = false;
   bool _locationPermissionGranted = false;
   bool _didTryInitialUserCenter = false;
+  Map<String, dynamic>? _ownerBusiness;
 
   static const LatLng _defaultUsaPosition = LatLng(37.9577, -121.2908);
   LatLng _initialPosition = _defaultUsaPosition;
@@ -424,6 +425,7 @@ class _TruckPageState extends State<TruckPage> {
       'title': result['title'] ?? '',
       'cuisine': result['cuisine'] ?? '',
       'plan': result['plan'] ?? 'free',
+      'enablePayNow': result['enablePayNow'] ?? true,
       'isVerified': result['isVerified'] ?? false,
       'position': LatLng(latitude, longitude),
       'latitude': latitude,
@@ -463,6 +465,8 @@ class _TruckPageState extends State<TruckPage> {
     };
 
     setState(() {
+      _ownerBusiness = newBusiness;
+
       if (isFoodTruck) {
         foodTrucks.add(newBusiness);
       } else {
@@ -843,6 +847,29 @@ class _TruckPageState extends State<TruckPage> {
                 _openOwnerPortal();
               },
             ),
+            if (_ownerBusiness != null)
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit My Profile'),
+                onTap: () async {
+                  Navigator.pop(context);
+
+                  final result = await Navigator.push<Map<String, dynamic>>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OwnerPortalPage(
+                        existingData: _ownerBusiness,
+                      ),
+                    ),
+                  );
+
+                  if (result != null) {
+                    setState(() {
+                      _ownerBusiness = result;
+                    });
+                  }
+                },
+              ),
           ],
         ),
       ),

@@ -9,7 +9,12 @@ import 'package:video_player/video_player.dart';
 import 'owner_menu_editor_page.dart';
 
 class OwnerPortalPage extends StatefulWidget {
-  const OwnerPortalPage({super.key});
+  final Map<String, dynamic>? existingData;
+
+  const OwnerPortalPage({
+    super.key,
+    this.existingData,
+  });
 
   @override
   State<OwnerPortalPage> createState() => _OwnerPortalPageState();
@@ -18,6 +23,83 @@ class OwnerPortalPage extends StatefulWidget {
 class _OwnerPortalPageState extends State<OwnerPortalPage> {
   String businessType = 'food_truck';
   String selectedPlan = 'free';
+  bool enablePayNow = true;
+  @override
+  void initState() {
+    super.initState();
+
+    final data = widget.existingData;
+    if (data == null) return;
+
+    businessType = (data['type'] ?? 'food_truck').toString();
+    selectedPlan = (data['plan'] ?? 'free').toString();
+    enablePayNow = data['enablePayNow'] ?? true;
+
+    nameController.text = (data['title'] ?? '').toString();
+    cuisineController.text = (data['cuisine'] ?? '').toString();
+    addressController.text = (data['address'] ?? '').toString();
+    openTimeController.text = (data['openTime'] ?? '').toString();
+    closeTimeController.text = (data['closeTime'] ?? '').toString();
+    phoneController.text = (data['phone'] ?? '').toString();
+    menuController.text = (data['menu'] ?? '').toString();
+    descriptionController.text = (data['description'] ?? '').toString();
+
+    dailySpecialsDetailsController.text =
+        (data['dailySpecialsDetails'] ?? '').toString();
+    cateringDetailsController.text =
+        (data['cateringDetails'] ?? '').toString();
+    tiffinDetailsController.text =
+        (data['tiffinDetails'] ?? '').toString();
+
+    instagramController.text = (data['instagram'] ?? '').toString();
+    facebookController.text = (data['facebook'] ?? '').toString();
+    tiktokController.text = (data['tiktok'] ?? '').toString();
+    youtubeController.text = (data['youtube'] ?? '').toString();
+    whatsappController.text = (data['whatsapp'] ?? '').toString();
+
+    cashAppController.text = (data['cashApp'] ?? '').toString();
+    zelleController.text = (data['zelle'] ?? '').toString();
+    venmoController.text = (data['venmo'] ?? '').toString();
+
+    legalNameController.text = (data['legalName'] ?? '').toString();
+    permitNumberController.text = (data['permitNumber'] ?? '').toString();
+    verificationNotesController.text =
+        (data['verificationNotes'] ?? '').toString();
+
+    wantsVerification = data['verificationStatus'] == 'pending' ||
+        data['isVerified'] == true;
+    hasDailySpecials = data['dailySpecials'] == true;
+    hasCatering = data['cateringAvailable'] == true;
+    hasTiffin = data['tiffinService'] == true;
+    verificationStatus =
+        (data['verificationStatus'] ?? 'not_started').toString();
+
+    final imagePath = (data['image'] ?? data['bannerImage'] ?? '').toString();
+    if (imagePath.isNotEmpty && File(imagePath).existsSync()) {
+      bannerImage = File(imagePath);
+    }
+
+    final gallery = data['galleryImages'];
+    if (gallery is List) {
+      galleryImages = gallery
+          .map((e) => e.toString())
+          .where((path) => path.isNotEmpty && File(path).existsSync())
+          .map((path) => File(path))
+          .toList();
+    }
+
+    final menuItems = data['menuItems'];
+    if (menuItems is List) {
+      ownerMenuItems = menuItems
+          .whereType<Map>()
+          .map<Map<String, dynamic>>(
+            (item) => item.map(
+              (key, value) => MapEntry(key.toString(), value),
+        ),
+      )
+          .toList();
+    }
+  }
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController cuisineController = TextEditingController();
@@ -553,9 +635,11 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
         .toList();
 
     final Map<String, dynamic> newBusiness = {
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'id': widget.existingData?['id']?.toString() ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       'type': businessType,
       'plan': selectedPlan,
+      'enablePayNow': enablePayNow,
       'isVerified': false,
       'verificationStatus': wantsVerification ? 'pending' : 'not_started',
       'legalName': legalNameController.text.trim(),
@@ -1520,6 +1604,25 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
               icon: Icons.payments,
               hintText: 'Venmo username',
               controller: venmoController,
+            ),
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                const Text(
+                  'Enable Pay Now',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                Switch(
+                  value: enablePayNow,
+                  onChanged: (value) {
+                    setState(() {
+                      enablePayNow = value;
+                    });
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             SizedBox(

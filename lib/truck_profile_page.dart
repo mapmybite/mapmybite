@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'menu_page.dart';
+import 'owner_portal_page.dart';
 
 import 'order_data.dart';
 import 'notification_data.dart';
@@ -35,18 +36,15 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   double _selectedMenuTotal = 0.0;
   List<Map<String, dynamic>> _selectedOrderItems = [];
   bool get _canUseOrdering {
-    final String plan =
-    (widget.truck['plan'] ?? 'free').toString().toLowerCase().trim();
+    final String plan = (widget.truck['plan'] ?? 'free').toString();
     final bool isVerified = widget.truck['isVerified'] == true;
+    final bool enablePayNow = widget.truck['enablePayNow'] ?? true;
 
-    // 🔍 DEBUG (important)
-    print('DEBUG plan = $plan');
-    print('DEBUG isVerified = $isVerified');
+    // If Pay Now OFF → still allow ordering (Pay at Counter)
+    if (!enablePayNow) return true;
 
-    return plan == 'pro' ||
-        plan == 'premium' ||
-        plan == 'platinum' ||
-        isVerified;
+    // Normal rule
+    return plan != 'free' || isVerified;
   }
 
   bool get _isKitchen {
@@ -462,7 +460,24 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     if (!mounted) return;
     _showPosCheckoutBottomSheet();
   }
+  Future<void> _editProfile() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerPortalPage(
+          existingData: widget.truck,
+        ),
+      ),
+    );
 
+    if (result != null && result is Map<String, dynamic>) {
+      if (!mounted) return;
+
+      setState(() {
+        widget.truck.addAll(result);
+      });
+    }
+  }
   void _addToFavorite() {
     setState(() {
       _isFavorite = !_isFavorite;
@@ -861,6 +876,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     required String notes,
     required String paymentType,
   }) async {
+    final bool enablePayNow = widget.truck['enablePayNow'] ?? true;
+
+// If Pay Now OFF → force Pay at Counter
+    final String finalPaymentType =
+    enablePayNow ? paymentType : 'pay_at_counter';
     final bool? confirmed = await showDialog<bool>(
       context: bottomSheetContext,
       builder: (dialogContext) {
@@ -928,9 +948,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         'time': timeText,
         'notes': notes,
         'status': 'Pending',
-        'paymentType': paymentType,
-        'paymentMethod': paymentType == 'pay_now' ? 'pay_now' : 'pay_at_counter',
-        'paymentStatus': paymentType == 'pay_now'
+        'paymentType': finalPaymentType,
+        'paymentMethod':
+        finalPaymentType == 'pay_now' ? 'pay_now' : 'pay_at_counter',
+        'paymentStatus': finalPaymentType == 'pay_now'
+            ? 'Waiting for owner approval'
+            : 'Pay at Counter',
             ? 'Waiting for owner approval'
             : 'Pay at Counter',
         'total': _selectedMenuCart.isNotEmpty
@@ -1771,6 +1794,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             'notes': notesController.text.trim(),
                             'status': 'Completed',
                             'paymentType': selectedPaymentMethod,
+                            'paymentMethod': selectedPaymentMethod,
                             'paymentStatus': 'Paid',
                             'total': _selectedMenuTotal.toStringAsFixed(2),
                             'cashApp': widget.truck['cashApp'] ?? '',
@@ -2765,6 +2789,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                   ),
                 ],
               )
+
                   : Column(
                 children: [
                   Row(

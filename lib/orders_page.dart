@@ -14,6 +14,16 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
+  String _selectedStatusFilter = 'All';
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _updateStatus(int index, String newStatus) {
     setState(() {
       OrderData.orders[index]['status'] = newStatus;
@@ -35,8 +45,6 @@ class _OrdersPageState extends State<OrdersPage> {
           messageContains: customer,
         );
       }
-
-
 
       String notificationMessage = 'Your order status is now $newStatus.';
 
@@ -136,18 +144,21 @@ class _OrdersPageState extends State<OrdersPage> {
       OrderData.addNotification(
         audience: 'customer',
         title: 'Payment Required',
-        message: '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
+        message:
+        '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
         business: business,
         customer: customer,
         type: 'payment',
       );
       NotificationData.addNotification(
         title: 'Payment Required',
-        message: '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
+        message:
+        '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
       );
       LocalNotificationService.showNotification(
         title: 'Payment Required',
-        body: '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
+        body:
+        '$business accepted your order. Please pay now using the payment options, then tap "I\'m Here" when you arrive.',
       );
     });
 
@@ -226,6 +237,7 @@ class _OrdersPageState extends State<OrdersPage> {
       );
     }
   }
+
   Future<void> _openArrivalDirections({
     required double latitude,
     required double longitude,
@@ -619,231 +631,620 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildFilterChip(String label) {
+    final bool isSelected = _selectedStatusFilter == label;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (_) {
+          setState(() {
+            _selectedStatusFilter = label;
+          });
+        },
+      ),
+    );
+  }
+
+  Map<String, dynamic> _getTodayStats() {
     final orders = OrderData.orders;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
-      body: orders.isEmpty
-          ? const Center(
-        child: Text(
-          'No orders yet',
-          style: TextStyle(fontSize: 16),
+    int count = 0;
+    double totalSales = 0.0;
+
+    final DateTime now = DateTime.now();
+
+    for (final order in orders) {
+      DateTime? orderTime;
+
+      if (order['createdAt'] != null) {
+        orderTime = DateTime.tryParse(order['createdAt'].toString());
+      }
+
+      if (orderTime == null) {
+        final String dateText = (order['date'] ?? '').toString().trim();
+
+        if (dateText.isNotEmpty) {
+          final parts = dateText.split('/');
+
+          if (parts.length == 3) {
+            final int? month = int.tryParse(parts[0]);
+            final int? day = int.tryParse(parts[1]);
+            final int? year = int.tryParse(parts[2]);
+
+            if (month != null && day != null && year != null) {
+              orderTime = DateTime(year, month, day);
+            }
+          }
+        }
+      }
+
+      if (orderTime == null) continue;
+
+      if (orderTime.year == now.year &&
+          orderTime.month == now.month &&
+          orderTime.day == now.day) {
+        count++;
+
+        final String totalStr = (order['total'] ?? '0').toString();
+        final double value = double.tryParse(totalStr) ?? 0.0;
+        totalSales += value;
+      }
+    }
+
+    return {
+      'count': count,
+      'sales': totalSales,
+    };
+  }
+
+  Map<String, dynamic> _getStatsForRange(DateTime startDate) {
+    final orders = OrderData.orders;
+
+    int count = 0;
+    double totalSales = 0.0;
+
+    final DateTime start = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+    );
+
+    for (final order in orders) {
+      DateTime? orderTime;
+
+      if (order['createdAt'] != null) {
+        orderTime = DateTime.tryParse(order['createdAt'].toString());
+      }
+
+      if (orderTime == null) {
+        final String dateText = (order['date'] ?? '').toString().trim();
+        final parts = dateText.split('/');
+
+        if (parts.length == 3) {
+          final int? month = int.tryParse(parts[0]);
+          final int? day = int.tryParse(parts[1]);
+          final int? year = int.tryParse(parts[2]);
+
+          if (month != null && day != null && year != null) {
+            orderTime = DateTime(year, month, day);
+          }
+        }
+      }
+
+      if (orderTime == null) continue;
+
+      final DateTime orderDate = DateTime(
+        orderTime.year,
+        orderTime.month,
+        orderTime.day,
+      );
+
+      if (orderDate.isBefore(start)) continue;
+
+      count++;
+
+      final String totalStr = (order['total'] ?? '0').toString();
+      final double value = double.tryParse(totalStr) ?? 0.0;
+      totalSales += value;
+    }
+
+    return {
+      'count': count,
+      'sales': totalSales,
+    };
+  }
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.20)),
         ),
-      )
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: orders.length,
-        itemBuilder: (context, index) {
-          final order = orders[index];
-
-          final String status = (order['status'] ?? 'Pending').toString();
-          final String business = (order['business'] ?? '').toString();
-          final String rawItems = (order['items'] ?? '').toString().trim();
-          final String items = rawItems.isNotEmpty ? rawItems : 'No items';
-          final String customer = (order['customer'] ?? '').toString();
-          final String phone = (order['phone'] ?? '').toString();
-          final String total = (order['total'] ?? '').toString();
-
-          final bool isPosOrder = order['orderType'] == 'pos';
-          final bool isHereNow = order['customerAtLocation'] == true;
-          final bool transactionComplete =
-              order['transactionComplete'] == true ||
-                  status == 'Completed';
-
-          final bool isPayNowOrder = _isPayNowOrder(order);
-          final bool isPayAtCounterOrder = _isPayAtCounterOrder(order);
-
-          final String paymentMethod = _formatPaymentMethod(order);
-
-          final String paymentStatus = _displayPaymentStatus(
-            order,
-            status,
-            isPosOrder,
-            isPayNowOrder,
-            isPayAtCounterOrder,
-          );
-
-          final bool isRejected = status == 'Rejected';
-          final bool isAccepted = status == 'Accepted';
-          final bool isPreparing = status == 'Preparing';
-          final bool isArrived = order['customerAtLocation'] == true;
-          final bool isReady = status == 'Ready';
-          final bool isCompleted = status == 'Completed';
-          final bool isPaid = paymentStatus.toLowerCase() == 'paid';
-          final bool isPaymentSent =
-              paymentStatus.toLowerCase() == 'payment sent';
-
-          final bool canStartPreparing =
-              isAccepted &&
-                  !isRejected &&
-                  !isCompleted &&
-                  (isPayAtCounterOrder || isPaid || isPosOrder);
-
-          final bool showSendPaymentOptions =
-              isAccepted &&
-                  !isRejected &&
-                  !isCompleted &&
-                  isPayNowOrder &&
-                  !isPaid;
-
-          final bool showPaymentReceived =
-              isAccepted &&
-                  !isRejected &&
-                  !isCompleted &&
-                  isPayNowOrder &&
-                  isPaymentSent;
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.orange.shade700),
+            const SizedBox(width: 10),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    business,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isPosOrder
-                        ? 'POS Order'
-                        : isHereNow
-                        ? 'CUSTOMER IS HERE'
-                        : 'Online Order',
+                    title,
                     style: TextStyle(
                       fontSize: 12,
-                      color: isPosOrder
-                          ? Colors.blue
-                          : isHereNow
-                          ? Colors.green
-                          : Colors.orange,
+                      color: Colors.grey.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _infoLine('Items', items),
-                  _infoLine('Customer', customer.isEmpty ? 'N/A' : customer),
-                  _infoLine('Phone', phone.isEmpty ? 'N/A' : phone),
-                  _infoLine(
-                    'Status',
-                    status,
-                    valueColor: isRejected
-                        ? Colors.red
-                        : isCompleted
-                        ? Colors.green
-                        : Colors.black87,
-                  ),
-                  _infoLine(
-                    'Payment Method',
-                    paymentMethod,
-                    valueColor: Colors.indigo,
-                  ),
-                  _infoLine(
-                    'Payment Status',
-                    paymentStatus,
-                    valueColor: isPaid
-                        ? Colors.green
-                        : isPaymentSent
-                        ? Colors.blue
-                        : isPayAtCounterOrder
-                        ? Colors.orange
-                        : Colors.redAccent,
-                  ),
-                  if (isHereNow)
-                    _infoLine(
-                      'Skip the Line',
-                      'Customer is here',
-                      valueColor: Colors.green,
-                      valueWeight: FontWeight.bold,
-                    ),
-                  if ((order['arrivedAt'] ?? '').toString().trim().isNotEmpty)
-                    _infoLine(
-                      'Arrived At',
-                      (order['arrivedAt'] ?? '').toString(),
-                      valueColor: Colors.green,
-                      valueWeight: FontWeight.w600,
-                    ),
-                  if (order['arrivalDistanceMeters'] != null)
-                    _infoLine(
-                      'Distance',
-                      '${((order['arrivalDistanceMeters'] as num).toDouble()).toStringAsFixed(0)} m',
-                      valueColor: Colors.green,
-                      valueWeight: FontWeight.w600,
-                    ),
-                  if ((order['customerLatitude'] ?? '').toString().trim().isNotEmpty &&
-                      (order['customerLongitude'] ?? '').toString().trim().isNotEmpty)
-                    _buildArrivalMapCard(order),
-                  if (total.trim().isNotEmpty)
-                    _infoLine(
-                      'Total',
-                      '\$$total',
-                      valueWeight: FontWeight.bold,
-                    ),
-                  if (transactionComplete)
-                    _infoLine(
-                      'Transaction',
-                      'Complete',
-                      valueColor: Colors.green,
-                      valueWeight: FontWeight.bold,
-                    ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ElevatedButton(
-                        onPressed: status == 'Pending'
-                            ? () => _updateStatus(index, 'Accepted')
-                            : null,
-                        child: const Text('Accept'),
-                      ),
-                      ElevatedButton(
-                        onPressed: status == 'Pending'
-                            ? () => _rejectOrder(index)
-                            : null,
-                        child: const Text('Reject'),
-                      ),
-                      ElevatedButton(
-                        onPressed: canStartPreparing
-                            ? () => _updateStatus(index, 'Preparing')
-                            : null,
-                        child: const Text('Preparing'),
-                      ),
-                      ElevatedButton(
-                        onPressed: isPreparing
-                            ? () => _updateStatus(index, 'Ready')
-                            : null,
-                        child: const Text('Ready'),
-                      ),
-                      ElevatedButton(
-                        onPressed: isReady
-                            ? () => _updateStatus(index, 'Completed')
-                            : null,
-                        child: const Text('Complete'),
-                      ),
-                      if (showSendPaymentOptions)
-                        OutlinedButton(
-                          onPressed: () => _showPaymentOptionsDialog(index),
-                          child: const Text('Payment Options'),
-                        ),
-                      if (showPaymentReceived)
-                        OutlinedButton(
-                          onPressed: () => _markPaymentReceived(index),
-                          child: const Text('Payment Received'),
-                        ),
-                    ],
                   ),
                 ],
               ),
             ),
-          );
-        },
+          ],
+        ),
+      ),
+    );
+  }
+  String _formatOrderDateTime(Map<String, dynamic> order, int index) {
+    final String createdAt = (order['createdAt'] ?? '').toString().trim();
+    if (createdAt.isNotEmpty) {
+      final DateTime? parsed = DateTime.tryParse(createdAt);
+      if (parsed != null) {
+        final String date =
+            '${parsed.month}/${parsed.day}/${parsed.year}';
+        final String time = TimeOfDay.fromDateTime(parsed).format(context);
+        return '$date $time';
+      }
+    }
+
+    final String date = (order['date'] ?? '').toString().trim();
+    final String time = (order['time'] ?? '').toString().trim();
+
+    if (date.isNotEmpty && time.isNotEmpty) {
+      return '$date $time';
+    }
+
+    if (date.isNotEmpty) return date;
+    if (time.isNotEmpty) return time;
+
+    return 'Order #${index + 1}';
+  }
+
+  bool _matchesSearch(Map<String, dynamic> order, int index) {
+    final String query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return true;
+
+    final String business = (order['business'] ?? '').toString().toLowerCase();
+    final String customer = (order['customer'] ?? '').toString().toLowerCase();
+    final String phone = (order['phone'] ?? '').toString().toLowerCase();
+    final String items = (order['items'] ?? '').toString().toLowerCase();
+    final String status = (order['status'] ?? '').toString().toLowerCase();
+    final String orderDateTime =
+    _formatOrderDateTime(order, index).toLowerCase();
+    final String paymentMethod = _formatPaymentMethod(order).toLowerCase();
+    final String paymentStatus =
+    (order['paymentStatus'] ?? '').toString().toLowerCase();
+
+    final String orderNumber = (index + 1).toString();
+    final String orderSearchText =
+        '#$orderNumber order $orderNumber order #$orderNumber';
+
+    return business.contains(query) ||
+        customer.contains(query) ||
+        phone.contains(query) ||
+        items.contains(query) ||
+        status.contains(query) ||
+        paymentMethod.contains(query) ||
+        paymentStatus.contains(query) ||
+        orderDateTime.contains(query) ||
+        orderSearchText.contains(query);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final orders = OrderData.orders;
+    final todayStats = _getTodayStats();
+    final DateTime now = DateTime.now();
+
+    final weekStats = _getStatsForRange(
+      now.subtract(Duration(days: now.weekday - 1)),
+    );
+
+    final monthStats = _getStatsForRange(
+      DateTime(now.year, now.month, 1),
+    );
+
+    final yearStats = _getStatsForRange(
+      DateTime(now.year, 1, 1),
+    );
+
+    final List<int> filteredIndices = [];
+    for (int i = 0; i < orders.length; i++) {
+      final String status =
+      (orders[i]['status'] ?? 'Pending').toString().trim();
+
+      final bool matchesStatus =
+          _selectedStatusFilter == 'All' || status == _selectedStatusFilter;
+
+      final bool matchesSearch = _matchesSearch(orders[i], i);
+
+      if (matchesStatus && matchesSearch) {
+        filteredIndices.add(i);
+      }
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Orders')),
+      body: Column(
+        children: [
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    _buildStatCard(
+                      title: 'Today Orders',
+                      value: todayStats['count'].toString(),
+                      icon: Icons.receipt_long,
+                    ),
+                    const SizedBox(width: 10),
+                    _buildStatCard(
+                      title: 'Today Sales',
+                      value: '\$${todayStats['sales'].toStringAsFixed(2)}',
+                      icon: Icons.attach_money,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _buildStatCard(
+                      title: 'Week Sales',
+                      value: '\$${weekStats['sales'].toStringAsFixed(2)}',
+                      icon: Icons.calendar_view_week,
+                    ),
+                    const SizedBox(width: 10),
+                    _buildStatCard(
+                      title: 'Month Sales',
+                      value: '\$${monthStats['sales'].toStringAsFixed(2)}',
+                      icon: Icons.calendar_month,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _buildStatCard(
+                      title: 'Year Orders',
+                      value: yearStats['count'].toString(),
+                      icon: Icons.event_available,
+                    ),
+                    const SizedBox(width: 10),
+                    _buildStatCard(
+                      title: 'Year Sales',
+                      value: '\$${yearStats['sales'].toStringAsFixed(2)}',
+                      icon: Icons.insights,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                _buildFilterChip('All'),
+                _buildFilterChip('Pending'),
+                _buildFilterChip('Accepted'),
+                _buildFilterChip('Preparing'),
+                _buildFilterChip('Ready'),
+                _buildFilterChip('Completed'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Search orders',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.trim().isEmpty
+                    ? null
+                    : IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                  icon: const Icon(Icons.clear),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: filteredIndices.isEmpty
+                ? const Center(
+              child: Text(
+                'No orders found',
+                style: TextStyle(fontSize: 16),
+              ),
+            )
+                : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: filteredIndices.length,
+              itemBuilder: (context, filteredIndex) {
+                final int index = filteredIndices[filteredIndex];
+                final order = orders[index];
+
+                final String status =
+                (order['status'] ?? 'Pending').toString();
+                final String business =
+                (order['business'] ?? '').toString();
+                final String rawItems =
+                (order['items'] ?? '').toString().trim();
+                final String items =
+                rawItems.isNotEmpty ? rawItems : 'No items';
+                final String customer =
+                (order['customer'] ?? '').toString();
+                final String phone = (order['phone'] ?? '').toString();
+                final String total = (order['total'] ?? '').toString();
+
+                final bool isPosOrder = order['orderType'] == 'pos';
+                final bool isHereNow = order['customerAtLocation'] == true;
+                final bool transactionComplete =
+                    order['transactionComplete'] == true ||
+                        status == 'Completed';
+
+                final bool isPayNowOrder = _isPayNowOrder(order);
+                final bool isPayAtCounterOrder =
+                _isPayAtCounterOrder(order);
+
+                final String paymentMethod = _formatPaymentMethod(order);
+
+                final String paymentStatus = _displayPaymentStatus(
+                  order,
+                  status,
+                  isPosOrder,
+                  isPayNowOrder,
+                  isPayAtCounterOrder,
+                );
+
+                final bool isRejected = status == 'Rejected';
+                final bool isAccepted = status == 'Accepted';
+                final bool isPreparing = status == 'Preparing';
+                final bool isReady = status == 'Ready';
+                final bool isCompleted = status == 'Completed';
+                final bool isPaid =
+                    paymentStatus.toLowerCase() == 'paid';
+                final bool isPaymentSent =
+                    paymentStatus.toLowerCase() == 'payment sent';
+
+                final bool canStartPreparing = isAccepted &&
+                    !isRejected &&
+                    !isCompleted &&
+                    (isPayAtCounterOrder || isPaid || isPosOrder);
+
+                final bool showSendPaymentOptions = isAccepted &&
+                    !isRejected &&
+                    !isCompleted &&
+                    isPayNowOrder &&
+                    !isPaid;
+
+                final bool showPaymentReceived = isAccepted &&
+                    !isRejected &&
+                    !isCompleted &&
+                    isPayNowOrder &&
+                    isPaymentSent;
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          business,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isPosOrder
+                              ? 'POS Order'
+                              : isHereNow
+                              ? 'CUSTOMER IS HERE'
+                              : 'Online Order',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isPosOrder
+                                ? Colors.blue
+                                : isHereNow
+                                ? Colors.green
+                                : Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _infoLine(
+                          'Order',
+                          '#${index + 1} • ${_formatOrderDateTime(order, index)}',
+                          valueColor: Colors.grey.shade800,
+                          valueWeight: FontWeight.w600,
+                        ),
+                        _infoLine('Items', items),
+                        _infoLine(
+                            'Customer', customer.isEmpty ? 'N/A' : customer),
+                        _infoLine('Phone', phone.isEmpty ? 'N/A' : phone),
+                        _infoLine(
+                          'Status',
+                          status,
+                          valueColor: isRejected
+                              ? Colors.red
+                              : isCompleted
+                              ? Colors.green
+                              : Colors.black87,
+                        ),
+                        _infoLine(
+                          'Payment Method',
+                          paymentMethod,
+                          valueColor: Colors.indigo,
+                        ),
+                        _infoLine(
+                          'Payment Status',
+                          paymentStatus,
+                          valueColor: isPaid
+                              ? Colors.green
+                              : isPaymentSent
+                              ? Colors.blue
+                              : isPayAtCounterOrder
+                              ? Colors.orange
+                              : Colors.redAccent,
+                        ),
+                        if (isHereNow)
+                          _infoLine(
+                            'Skip the Line',
+                            'Customer is here',
+                            valueColor: Colors.green,
+                            valueWeight: FontWeight.bold,
+                          ),
+                        if ((order['arrivedAt'] ?? '')
+                            .toString()
+                            .trim()
+                            .isNotEmpty)
+                          _infoLine(
+                            'Arrived At',
+                            (order['arrivedAt'] ?? '').toString(),
+                            valueColor: Colors.green,
+                            valueWeight: FontWeight.w600,
+                          ),
+                        if (order['arrivalDistanceMeters'] != null)
+                          _infoLine(
+                            'Distance',
+                            '${((order['arrivalDistanceMeters'] as num).toDouble()).toStringAsFixed(0)} m',
+                            valueColor: Colors.green,
+                            valueWeight: FontWeight.w600,
+                          ),
+                        if ((order['customerLatitude'] ?? '')
+                            .toString()
+                            .trim()
+                            .isNotEmpty &&
+                            (order['customerLongitude'] ?? '')
+                                .toString()
+                                .trim()
+                                .isNotEmpty)
+                          _buildArrivalMapCard(order),
+                        if (total.trim().isNotEmpty)
+                          _infoLine(
+                            'Total',
+                            '\$$total',
+                            valueWeight: FontWeight.bold,
+                          ),
+                        if (transactionComplete)
+                          _infoLine(
+                            'Transaction',
+                            'Complete',
+                            valueColor: Colors.green,
+                            valueWeight: FontWeight.bold,
+                          ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ElevatedButton(
+                              onPressed: status == 'Pending'
+                                  ? () => _updateStatus(index, 'Accepted')
+                                  : null,
+                              child: const Text('Accept'),
+                            ),
+                            ElevatedButton(
+                              onPressed: status == 'Pending'
+                                  ? () => _rejectOrder(index)
+                                  : null,
+                              child: const Text('Reject'),
+                            ),
+                            ElevatedButton(
+                              onPressed: canStartPreparing
+                                  ? () =>
+                                  _updateStatus(index, 'Preparing')
+                                  : null,
+                              child: const Text('Preparing'),
+                            ),
+                            ElevatedButton(
+                              onPressed: isPreparing
+                                  ? () => _updateStatus(index, 'Ready')
+                                  : null,
+                              child: const Text('Ready'),
+                            ),
+                            ElevatedButton(
+                              onPressed: isReady
+                                  ? () => _updateStatus(index, 'Completed')
+                                  : null,
+                              child: const Text('Complete'),
+                            ),
+                            if (showSendPaymentOptions)
+                              OutlinedButton(
+                                onPressed: () =>
+                                    _showPaymentOptionsDialog(index),
+                                child: const Text('Payment Options'),
+                              ),
+                            if (showPaymentReceived)
+                              OutlinedButton(
+                                onPressed: () =>
+                                    _markPaymentReceived(index),
+                                child: const Text('Payment Received'),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

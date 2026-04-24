@@ -39,6 +39,7 @@ class _OrdersPageState extends State<OrdersPage> {
     });
   }
   String _selectedStatusFilter = 'All';
+  String _selectedOrderTypeFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   DateTimeRange? _selectedDateRange;
@@ -693,6 +694,22 @@ class _OrdersPageState extends State<OrdersPage> {
       ),
     );
   }
+  Widget _buildOrderTypeChip(String type) {
+    final bool isSelected = _selectedOrderTypeFilter == type;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(type),
+        selected: isSelected,
+        onSelected: (_) {
+          setState(() {
+            _selectedOrderTypeFilter = type;
+          });
+        },
+      ),
+    );
+  }
 
   Map<String, dynamic> _getTodayStats() {
     final orders = OrderData.orders;
@@ -921,7 +938,7 @@ class _OrdersPageState extends State<OrdersPage> {
     );
 
     final List<int> filteredIndices = [];
-    for (int i = 0; i < orders.length; i++) {
+    for (int i = orders.length - 1; i >= 0; i--) {
       final String status =
       (orders[i]['status'] ?? 'Pending').toString().trim();
 
@@ -929,6 +946,25 @@ class _OrdersPageState extends State<OrdersPage> {
           _selectedStatusFilter == 'All' || status == _selectedStatusFilter;
 
       final bool matchesSearch = _matchesSearch(orders[i], i);
+      bool matchesOrderType = true;
+
+      if (_selectedOrderTypeFilter != 'All') {
+        final order = orders[i];
+
+        final bool isPosOrder = order['orderType'] == 'pos';
+        final bool isPayNowOrder = _isPayNowOrder(order);
+        final bool isPayAtCounterOrder = _isPayAtCounterOrder(order);
+
+        if (_selectedOrderTypeFilter == 'POS') {
+          matchesOrderType = isPosOrder;
+
+        } else if (_selectedOrderTypeFilter == 'Pay Now') {
+          matchesOrderType = isPayNowOrder && !isPosOrder;
+
+        } else if (_selectedOrderTypeFilter == 'Pay at Counter') {
+          matchesOrderType = isPayAtCounterOrder && !isPosOrder;
+        }
+      }
       bool matchesDate = true;
 
       if (_selectedDateRange != null) {
@@ -963,7 +999,7 @@ class _OrdersPageState extends State<OrdersPage> {
         }
       }
 
-      if (matchesStatus && matchesSearch && matchesDate) {
+      if (matchesStatus && matchesSearch && matchesDate && matchesOrderType) {
         filteredIndices.add(i);
       }
     }
@@ -1049,6 +1085,8 @@ class _OrdersPageState extends State<OrdersPage> {
 
           if (_showFilters) ...[
             const SizedBox(height: 8),
+
+            // STATUS FILTERS
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1060,6 +1098,22 @@ class _OrdersPageState extends State<OrdersPage> {
                   _buildFilterChip('Preparing'),
                   _buildFilterChip('Ready'),
                   _buildFilterChip('Completed'),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ORDER TYPE FILTERS
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  _buildOrderTypeChip('All'),
+                  _buildOrderTypeChip('Pay Now'),
+                  _buildOrderTypeChip('Pay at Counter'),
+                  _buildOrderTypeChip('POS'),
                 ],
               ),
             ),
@@ -1150,7 +1204,8 @@ class _OrdersPageState extends State<OrdersPage> {
                 final String phone = (order['phone'] ?? '').toString();
                 final String total = (order['total'] ?? '').toString();
 
-                final bool isPosOrder = order['orderType'] == 'pos';
+                final String orderType = (order['orderType'] ?? '').toString().toLowerCase();
+                final bool isPosOrder = orderType == 'pos' || orderType.contains('pos');
                 final bool isHereNow = order['customerAtLocation'] == true;
                 final bool transactionComplete =
                     order['transactionComplete'] == true ||

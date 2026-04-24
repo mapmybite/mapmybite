@@ -14,6 +14,7 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
+  bool _showFilters = false;
   String _selectedStatusFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -995,20 +996,45 @@ class _OrdersPageState extends State<OrdersPage> {
 
           const SizedBox(height: 8),
 
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                _buildFilterChip('All'),
-                _buildFilterChip('Pending'),
-                _buildFilterChip('Accepted'),
-                _buildFilterChip('Preparing'),
-                _buildFilterChip('Ready'),
-                _buildFilterChip('Completed'),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _showFilters = !_showFilters;
+                      });
+                    },
+                    icon: Icon(
+                      _showFilters ? Icons.expand_less : Icons.tune,
+                      size: 18,
+                    ),
+                    label: Text(_showFilters ? 'Hide Filters' : 'Show Filters'),
+                  ),
+                ),
               ],
             ),
           ),
+
+          if (_showFilters) ...[
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  _buildFilterChip('All'),
+                  _buildFilterChip('Pending'),
+                  _buildFilterChip('Accepted'),
+                  _buildFilterChip('Preparing'),
+                  _buildFilterChip('Ready'),
+                  _buildFilterChip('Completed'),
+                ],
+              ),
+            ),
+          ],
 
           const SizedBox(height: 8),
 

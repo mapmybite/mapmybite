@@ -15,6 +15,29 @@ class OrdersPage extends StatefulWidget {
 
 class _OrdersPageState extends State<OrdersPage> {
   bool _showFilters = false;
+  final ScrollController _ordersScrollController = ScrollController();
+  bool _showStats = true;
+  double _lastScrollOffset = 0;
+  @override
+  void initState() {
+    super.initState();
+
+    _ordersScrollController.addListener(() {
+      final double currentOffset = _ordersScrollController.offset;
+
+      if (currentOffset > _lastScrollOffset + 12 && _showStats) {
+        setState(() {
+          _showStats = false;
+        });
+      } else if (currentOffset < _lastScrollOffset - 12 && !_showStats) {
+        setState(() {
+          _showStats = true;
+        });
+      }
+
+      _lastScrollOffset = currentOffset;
+    });
+  }
   String _selectedStatusFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -951,47 +974,53 @@ class _OrdersPageState extends State<OrdersPage> {
         children: [
           const SizedBox(height: 8),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildCompactStat(
-                    title: 'Today',
-                    value: '${todayStats['count']} orders',
-                    subValue: '\$${todayStats['sales'].toStringAsFixed(2)}',
-                    icon: Icons.today,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: _showStats
+                ? Padding(
+              key: const ValueKey('stats-visible'),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildCompactStat(
+                      title: 'Today',
+                      value: '${todayStats['count']} orders',
+                      subValue: '\$${todayStats['sales'].toStringAsFixed(2)}',
+                      icon: Icons.today,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildCompactStat(
-                    title: 'Week',
-                    value: '${weekStats['count']} orders',
-                    subValue: '\$${weekStats['sales'].toStringAsFixed(2)}',
-                    icon: Icons.calendar_view_week,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCompactStat(
+                      title: 'Week',
+                      value: '${weekStats['count']} orders',
+                      subValue: '\$${weekStats['sales'].toStringAsFixed(2)}',
+                      icon: Icons.calendar_view_week,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildCompactStat(
-                    title: 'Month',
-                    value: '${monthStats['count']} orders',
-                    subValue: '\$${monthStats['sales'].toStringAsFixed(2)}',
-                    icon: Icons.calendar_month,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCompactStat(
+                      title: 'Month',
+                      value: '${monthStats['count']} orders',
+                      subValue: '\$${monthStats['sales'].toStringAsFixed(2)}',
+                      icon: Icons.calendar_month,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildCompactStat(
-                    title: 'Year',
-                    value: '${yearStats['count']} orders',
-                    subValue: '\$${yearStats['sales'].toStringAsFixed(2)}',
-                    icon: Icons.insights,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCompactStat(
+                      title: 'Year',
+                      value: '${yearStats['count']} orders',
+                      subValue: '\$${yearStats['sales'].toStringAsFixed(2)}',
+                      icon: Icons.insights,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            )
+                : const SizedBox.shrink(key: ValueKey('stats-hidden')),
           ),
 
           const SizedBox(height: 8),
@@ -1100,7 +1129,8 @@ class _OrdersPageState extends State<OrdersPage> {
                 style: TextStyle(fontSize: 16),
               ),
             )
-                : ListView.builder(
+                :ListView.builder(
+              controller: _ordersScrollController,
               padding: const EdgeInsets.all(16),
               itemCount: filteredIndices.length,
               itemBuilder: (context, filteredIndex) {

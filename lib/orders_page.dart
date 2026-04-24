@@ -949,61 +949,51 @@ class _OrdersPageState extends State<OrdersPage> {
       body: Column(
         children: [
           const SizedBox(height: 8),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    _buildStatCard(
-                      title: 'Today Orders',
-                      value: todayStats['count'].toString(),
-                      icon: Icons.receipt_long,
-                    ),
-                    const SizedBox(width: 10),
-                    _buildStatCard(
-                      title: 'Today Sales',
-                      value: '\$${todayStats['sales'].toStringAsFixed(2)}',
-                      icon: Icons.attach_money,
-                    ),
-                  ],
+                Expanded(
+                  child: _buildCompactStat(
+                    title: 'Today',
+                    value: '${todayStats['count']} orders',
+                    subValue: '\$${todayStats['sales'].toStringAsFixed(2)}',
+                    icon: Icons.today,
+                  ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    _buildStatCard(
-                      title: 'Week Sales',
-                      value: '\$${weekStats['sales'].toStringAsFixed(2)}',
-                      icon: Icons.calendar_view_week,
-                    ),
-                    const SizedBox(width: 10),
-                    _buildStatCard(
-                      title: 'Month Sales',
-                      value: '\$${monthStats['sales'].toStringAsFixed(2)}',
-                      icon: Icons.calendar_month,
-                    ),
-                  ],
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactStat(
+                    title: 'Week',
+                    value: '${weekStats['count']} orders',
+                    subValue: '\$${weekStats['sales'].toStringAsFixed(2)}',
+                    icon: Icons.calendar_view_week,
+                  ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    _buildStatCard(
-                      title: 'Year Orders',
-                      value: yearStats['count'].toString(),
-                      icon: Icons.event_available,
-                    ),
-                    const SizedBox(width: 10),
-                    _buildStatCard(
-                      title: 'Year Sales',
-                      value: '\$${yearStats['sales'].toStringAsFixed(2)}',
-                      icon: Icons.insights,
-                    ),
-                  ],
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactStat(
+                    title: 'Month',
+                    value: '${monthStats['count']} orders',
+                    subValue: '\$${monthStats['sales'].toStringAsFixed(2)}',
+                    icon: Icons.calendar_month,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactStat(
+                    title: 'Year',
+                    value: '${yearStats['count']} orders',
+                    subValue: '\$${yearStats['sales'].toStringAsFixed(2)}',
+                    icon: Icons.insights,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
+
+          const SizedBox(height: 8),
 
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -1019,60 +1009,63 @@ class _OrdersPageState extends State<OrdersPage> {
               ],
             ),
           ),
+
           const SizedBox(height: 8),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                ElevatedButton.icon(
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search orders',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.trim().isEmpty
+                          ? null
+                          : IconButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                        icon: const Icon(Icons.clear),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Date Range',
                   onPressed: _pickDateRange,
                   icon: const Icon(Icons.date_range),
-                  label: const Text('Date Range'),
                 ),
-                const SizedBox(width: 10),
                 if (_selectedDateRange != null)
-                  TextButton(
+                  IconButton(
+                    tooltip: 'Clear Date Range',
                     onPressed: _clearDateRange,
-                    child: const Text('Clear'),
+                    icon: const Icon(Icons.close),
                   ),
               ],
             ),
           ),
+
           const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Search orders',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.trim().isEmpty
-                    ? null
-                    : IconButton(
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                  },
-                  icon: const Icon(Icons.clear),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
+
           Expanded(
             child: filteredIndices.isEmpty
                 ? const Center(
@@ -1280,8 +1273,7 @@ class _OrdersPageState extends State<OrdersPage> {
                             ),
                             ElevatedButton(
                               onPressed: canStartPreparing
-                                  ? () =>
-                                  _updateStatus(index, 'Preparing')
+                                  ? () => _updateStatus(index, 'Preparing')
                                   : null,
                               child: const Text('Preparing'),
                             ),
@@ -1316,6 +1308,55 @@ class _OrdersPageState extends State<OrdersPage> {
                   ),
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactStat({
+    required String title,
+    required String value,
+    required String subValue,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade100),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 17, color: Colors.orange.shade700),
+          const SizedBox(height: 3),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            subValue,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.grey.shade700,
             ),
           ),
         ],

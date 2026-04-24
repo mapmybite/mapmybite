@@ -623,13 +623,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     final bool hasTiffin = widget.truck['tiffinService'] == true;
 
     if (!hasDaily && !hasCatering && !hasTiffin) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Text(
-          'DEBUG services: daily=${widget.truck['dailySpecials']} | catering=${widget.truck['cateringAvailable']} | tiffin=${widget.truck['tiffinService']}',
-          style: const TextStyle(fontSize: 12, color: Colors.red),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     return Container(
@@ -912,7 +906,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 ),
                 _buildSummaryRow(
                   'Payment',
-                  paymentType == 'pay_now' ? 'Pay Now' : 'Pay at Counter',
+                  finalPaymentType == 'pay_now' ? 'Pay Now' : 'Pay at Counter',
                 ),
                 _buildSummaryRow(
                   'Notes',
@@ -954,8 +948,6 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         'paymentStatus': finalPaymentType == 'pay_now'
             ? 'Waiting for owner approval'
             : 'Pay at Counter',
-            ? 'Waiting for owner approval'
-            : 'Pay at Counter',
         'total': _selectedMenuCart.isNotEmpty
             ? _selectedMenuTotal.toStringAsFixed(2)
             : '',
@@ -990,7 +982,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            paymentType == 'pay_now'
+            finalPaymentType == 'pay_now'
                 ? 'Order submitted. Wait for owner to accept and send payment options.'
                 : isKitchen
                 ? 'Pre-order request submitted for ${widget.truck['title']}'
@@ -2225,12 +2217,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                               title: const Text('Pay Now'),
                               value: 'pay_now',
                               groupValue: selectedPaymentType,
-                              onChanged: (value) {
+                              onChanged: (widget.truck['enablePayNow'] ?? true)
+                                  ? (value) {
                                 if (value == null) return;
                                 setModalState(() {
                                   selectedPaymentType = value;
                                 });
-                              },
+                              }
+                                  : null,
                             ),
                           ),
                         ],

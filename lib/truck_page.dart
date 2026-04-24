@@ -865,7 +865,28 @@ class _TruckPageState extends State<TruckPage> {
 
                   if (result != null) {
                     setState(() {
-                      _ownerBusiness = result;
+                      final String editedId = result['id']?.toString() ?? '';
+
+                      _ownerBusiness = {
+                        ...?_ownerBusiness,
+                        ...result,
+                      };
+
+                      final int truckIndex = foodTrucks.indexWhere(
+                            (truck) => truck['id']?.toString() == editedId,
+                      );
+
+                      final int kitchenIndex = homeKitchens.indexWhere(
+                            (kitchen) => kitchen['id']?.toString() == editedId,
+                      );
+
+                      if (truckIndex != -1) {
+                        foodTrucks[truckIndex].addAll(result);
+                      }
+
+                      if (kitchenIndex != -1) {
+                        homeKitchens[kitchenIndex].addAll(result);
+                      }
                     });
                   }
                 },

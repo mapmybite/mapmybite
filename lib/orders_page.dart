@@ -17,6 +17,7 @@ class _OrdersPageState extends State<OrdersPage> {
   String _selectedStatusFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  DateTimeRange? _selectedDateRange;
 
   @override
   void dispose() {
@@ -630,6 +631,27 @@ class _OrdersPageState extends State<OrdersPage> {
       },
     );
   }
+  Future<void> _pickDateRange() async {
+    final DateTime now = DateTime.now();
+
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 1),
+      initialDateRange: _selectedDateRange,
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      _selectedDateRange = picked;
+    });
+  }
+  void _clearDateRange() {
+    setState(() {
+      _selectedDateRange = null;
+    });
+  }
 
   Widget _buildFilterChip(String label) {
     final bool isSelected = _selectedStatusFilter == label;
@@ -883,8 +905,41 @@ class _OrdersPageState extends State<OrdersPage> {
           _selectedStatusFilter == 'All' || status == _selectedStatusFilter;
 
       final bool matchesSearch = _matchesSearch(orders[i], i);
+      bool matchesDate = true;
 
-      if (matchesStatus && matchesSearch) {
+      if (_selectedDateRange != null) {
+        DateTime? orderTime;
+
+        if (orders[i]['createdAt'] != null) {
+          orderTime = DateTime.tryParse(orders[i]['createdAt'].toString());
+        }
+
+        if (orderTime == null) {
+          final String dateText = (orders[i]['date'] ?? '').toString();
+          final parts = dateText.split('/');
+
+          if (parts.length == 3) {
+            final m = int.tryParse(parts[0]);
+            final d = int.tryParse(parts[1]);
+            final y = int.tryParse(parts[2]);
+
+            if (m != null && d != null && y != null) {
+              orderTime = DateTime(y, m, d);
+            }
+          }
+        }
+
+        if (orderTime != null) {
+          matchesDate = orderTime.isAfter(
+            _selectedDateRange!.start.subtract(const Duration(days: 1)),
+          ) &&
+              orderTime.isBefore(
+                _selectedDateRange!.end.add(const Duration(days: 1)),
+              );
+        }
+      }
+
+      if (matchesStatus && matchesSearch && matchesDate) {
         filteredIndices.add(i);
       }
     }
@@ -961,6 +1016,25 @@ class _OrdersPageState extends State<OrdersPage> {
                 _buildFilterChip('Preparing'),
                 _buildFilterChip('Ready'),
                 _buildFilterChip('Completed'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _pickDateRange,
+                  icon: const Icon(Icons.date_range),
+                  label: const Text('Date Range'),
+                ),
+                const SizedBox(width: 10),
+                if (_selectedDateRange != null)
+                  TextButton(
+                    onPressed: _clearDateRange,
+                    child: const Text('Clear'),
+                  ),
               ],
             ),
           ),

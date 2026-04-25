@@ -5,6 +5,7 @@ import 'order_data.dart';
 import 'notification_data.dart';
 import 'local_notification_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -47,6 +48,7 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _ordersScrollController.dispose();
     super.dispose();
   }
 
@@ -55,6 +57,7 @@ class _OrdersPageState extends State<OrdersPage> {
       OrderData.orders[index]['status'] = newStatus;
 
       final order = OrderData.orders[index];
+
       final bool isPayAtCounter = _isPayAtCounterOrder(order);
       final String business =
       (OrderData.orders[index]['business'] ?? '').toString();
@@ -250,7 +253,48 @@ class _OrdersPageState extends State<OrdersPage> {
       SnackBar(content: Text('$label copied')),
     );
   }
+  Future<void> _sendCustomerSms(String phone, String message) async {
+    final String cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
 
+    final Uri uri = Uri.parse(
+      'sms:$cleanPhone?body=${Uri.encodeComponent(message)}',
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('SMS not supported on this device')),
+      );
+    }
+  }
+  Future<void> _sendCustomerWhatsApp(String phone, String message) async {
+    String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (cleanPhone.length == 10) {
+      cleanPhone = '1$cleanPhone';
+    }
+
+    final Uri appUri = Uri.parse(
+      'whatsapp://send?phone=$cleanPhone&text=${Uri.encodeComponent(message)}',
+    );
+
+    final Uri webUri = Uri.parse(
+      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
+    );
+
+    if (await canLaunchUrl(appUri)) {
+      await launchUrl(appUri, mode: LaunchMode.externalApplication);
+    } else if (await canLaunchUrl(webUri)) {
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open WhatsApp')),
+      );
+    }
+  }
   Future<void> _openUrl(String url) async {
     final Uri uri = Uri.parse(url);
 
@@ -280,6 +324,60 @@ class _OrdersPageState extends State<OrdersPage> {
         const SnackBar(content: Text('Could not open maps')),
       );
     }
+  }
+  Future<void> _showArrivalMapDialog(Map<String, dynamic> order) async {
+    final double? lat = double.tryParse(
+      (order['customerLatitude'] ?? '').toString(),
+    );
+    final double? lng = double.tryParse(
+      (order['customerLongitude'] ?? '').toString(),
+    );
+
+    if (lat == null || lng == null) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Customer Location'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 260,
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: LatLng(lat, lng),
+                zoom: 16,
+              ),
+              markers: {
+                Marker(
+                  markerId: const MarkerId('customer_arrival'),
+                  position: LatLng(lat, lng),
+                  infoWindow: const InfoWindow(title: 'Customer location'),
+                ),
+              },
+              zoomControlsEnabled: false,
+              myLocationButtonEnabled: false,
+              mapToolbarEnabled: true,
+              liteModeEnabled: true,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Close'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _openArrivalDirections(latitude: lat, longitude: lng);
+              },
+              icon: const Icon(Icons.directions),
+              label: const Text('Open Maps'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildArrivalMapCard(Map<String, dynamic> order) {
@@ -1011,6 +1109,9 @@ class _OrdersPageState extends State<OrdersPage> {
           const SizedBox(height: 8),
 
           AnimatedSwitcher(
+            layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
+              return currentChild ?? const SizedBox.shrink();
+            },
             duration: const Duration(milliseconds: 250),
             child: _showStats
                 ? Padding(
@@ -1127,6 +1228,7 @@ class _OrdersPageState extends State<OrdersPage> {
               children: [
                 Expanded(
                   child: TextField(
+                    key: const ValueKey('orders_search_field'),
                     controller: _searchController,
                     onChanged: (value) {
                       setState(() {
@@ -1190,6 +1292,12 @@ class _OrdersPageState extends State<OrdersPage> {
               itemBuilder: (context, filteredIndex) {
                 final int index = filteredIndices[filteredIndex];
                 final order = orders[index];
+                final String phone = (order['phone'] ?? '').toString();
+
+                final bool isReturningCustomer = phone.trim().isNotEmpty &&
+                    OrderData.orders.where((o) {
+                      return (o['phone'] ?? '').toString().trim() == phone.trim();
+                    }).length > 1;
 
                 final String status =
                 (order['status'] ?? 'Pending').toString();
@@ -1201,7 +1309,7 @@ class _OrdersPageState extends State<OrdersPage> {
                 rawItems.isNotEmpty ? rawItems : 'No items';
                 final String customer =
                 (order['customer'] ?? '').toString();
-                final String phone = (order['phone'] ?? '').toString();
+
                 final String total = (order['total'] ?? '').toString();
 
                 final String orderType = (order['orderType'] ?? '').toString().toLowerCase();
@@ -1314,8 +1422,34 @@ class _OrdersPageState extends State<OrdersPage> {
                           valueWeight: FontWeight.w600,
                         ),
                         _infoLine('Items', items),
-                        _infoLine(
-                            'Customer', customer.isEmpty ? 'N/A' : customer),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _infoLine(
+                                'Customer',
+                                customer.isEmpty ? 'N/A' : customer,
+                              ),
+                            ),
+                            if (phone.trim().isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isReturningCustomer
+                                      ? Colors.orange.shade100
+                                      : Colors.green.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  isReturningCustomer ? 'Returning' : 'New',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: isReturningCustomer ? Colors.orange : Colors.green,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         _infoLine('Phone', phone.isEmpty ? 'N/A' : phone),
                         _infoLine(
                           'Status',
@@ -1374,7 +1508,32 @@ class _OrdersPageState extends State<OrdersPage> {
                                 .toString()
                                 .trim()
                                 .isNotEmpty)
-                          _buildArrivalMapCard(order),
+                          Container(
+                            margin: const EdgeInsets.only(top: 8, bottom: 6),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.green.withOpacity(0.25)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.location_on, color: Colors.green),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'Customer location received',
+                                    style: TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => _showArrivalMapDialog(order),
+                                  icon: const Icon(Icons.map),
+                                  label: const Text('View Map'),
+                                ),
+                              ],
+                            ),
+                          ),
                         if (total.trim().isNotEmpty)
                           _infoLine(
                             'Total',
@@ -1435,6 +1594,44 @@ class _OrdersPageState extends State<OrdersPage> {
                                     _markPaymentReceived(index),
                                 child: const Text('Payment Received'),
                               ),
+                            if (phone.trim().isNotEmpty) ...[
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  final message =
+                                      'Hi $customer! Your order is ready.\n\n'
+                                      'Skip the line next time using MapMyBite:\n'
+                                      'https://mapmybite.app';
+
+                                  Share.share(message);
+                                },
+                                icon: const Icon(Icons.share),
+                                label: const Text('Share'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () async {
+                                  final String cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+
+                                  if (cleanPhone.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('No phone number saved')),
+                                    );
+                                    return;
+                                  }
+
+                                  final Uri uri = Uri.parse('tel:$cleanPhone');
+
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Call not supported on this device')),
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.call),
+                                label: const Text('Call'),
+                              ),
+                            ],
                           ],
                         ),
                       ],

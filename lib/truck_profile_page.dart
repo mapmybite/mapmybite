@@ -11,9 +11,10 @@ import 'owner_portal_page.dart';
 
 
 import 'order_data.dart';
-import 'package:flutter/services.dart';
+
 import 'notification_data.dart';
 import 'local_notification_service.dart';
+import 'orders_page.dart';
 
 
 
@@ -1626,6 +1627,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     }
 
     final customerNameController = TextEditingController();
+    final customerPhoneController = TextEditingController();
+    final customerIdController = TextEditingController();
     final notesController = TextEditingController();
     String selectedPaymentMethod = 'cash';
 
@@ -1686,14 +1689,47 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       },
                     ),
                     const SizedBox(height: 12),
+                    // Customer Name
                     TextField(
                       controller: customerNameController,
                       decoration: InputDecoration(
-                        labelText: 'Customer Name (optional)',
+                        labelText: 'Customer Name',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 10),
+
+// Phone + ID Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: customerPhoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: InputDecoration(
+                              labelText: 'Phone',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: customerIdController,
+                            decoration: InputDecoration(
+                              labelText: 'MMB ID',
+                              hintText: 'Optional',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     const Text(
@@ -1782,7 +1818,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             'customer': customerNameController.text.trim().isEmpty
                                 ? 'Walk-in Customer'
                                 : customerNameController.text.trim(),
-                            'phone': '',
+                            'phone': customerPhoneController.text.trim(),
+                            'mmbId': customerIdController.text.trim(),
                             'items': _selectedItemsText(),
                             'quantity': _selectedTotalQuantity().toString(),
                             'date': dateText,
@@ -2777,6 +2814,31 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       label: const Text('POS'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const OrdersPage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.receipt_long),
+                      label: const Text('Orders'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(

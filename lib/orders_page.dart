@@ -1267,21 +1267,44 @@ class _OrdersPageState extends State<OrdersPage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          isPosOrder
-                              ? 'POS Order'
-                              : isHereNow
-                              ? 'CUSTOMER IS HERE'
-                              : 'Online Order',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isPosOrder
-                                ? Colors.blue
-                                : isHereNow
-                                ? Colors.green
-                                : Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              isPosOrder
+                                  ? 'POS Order'
+                                  : isHereNow
+                                  ? 'CUSTOMER IS HERE'
+                                  : 'Online Order',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isPosOrder
+                                    ? Colors.blue
+                                    : isHereNow
+                                    ? Colors.green
+                                    : Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            if (index >= orders.length - 3)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'NEW',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         _infoLine(

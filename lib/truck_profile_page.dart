@@ -9,7 +9,9 @@ import 'package:geolocator/geolocator.dart';
 import 'menu_page.dart';
 import 'owner_portal_page.dart';
 
+
 import 'order_data.dart';
+import 'package:flutter/services.dart';
 import 'notification_data.dart';
 import 'local_notification_service.dart';
 
@@ -960,6 +962,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         'customerLongitude': '',
         'skipLine': true,
       });
+      HapticFeedback.mediumImpact();
+      SystemSound.play(SystemSoundType.alert);
       NotificationData.addNotification(
         title: 'New Order',
         message: '$customerName placed a new order 🍽️',

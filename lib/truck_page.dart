@@ -791,12 +791,12 @@ class _TruckPageState extends State<TruckPage> {
             ),
             ListTile(
               leading: const Icon(Icons.home),
-              title: const Text('Home'),
+              title: Text(AppText.home()),
               onTap: _goToMapHome,
             ),
             ListTile(
               leading: const Icon(Icons.my_location),
-              title: const Text('My Location'),
+              title: Text(AppText.myLocation()),
               onTap: () {
                 Navigator.pop(context);
                 _centerOnUserLocation();
@@ -804,7 +804,7 @@ class _TruckPageState extends State<TruckPage> {
             ),
             ListTile(
               leading: const Icon(Icons.receipt_long),
-              title: const Text('Orders'),
+              title: Text(AppText.orders()),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -854,7 +854,9 @@ class _TruckPageState extends State<TruckPage> {
                             leading: const Text('🇺🇸'),
                             title: const Text('English'),
                             onTap: () {
-                              AppText.language = 'en';
+                              setState(() {
+                                AppText.language = 'en';
+                              });
                               Navigator.pop(context);
                             },
                           ),
@@ -863,7 +865,9 @@ class _TruckPageState extends State<TruckPage> {
                             leading: const Text('🇪🇸'),
                             title: const Text('Español'),
                             onTap: () {
-                              AppText.language = 'es';
+                              setState(() {
+                                AppText.language = 'es';
+                              });
                               Navigator.pop(context);
                             },
                           ),
@@ -872,7 +876,9 @@ class _TruckPageState extends State<TruckPage> {
                             leading: const Text('🇮🇳'),
                             title: const Text('हिन्दी'),
                             onTap: () {
-                              AppText.language = 'hi';
+                              setState(() {
+                                AppText.language = 'hi';
+                              });
                               Navigator.pop(context);
                             },
                           ),
@@ -881,7 +887,9 @@ class _TruckPageState extends State<TruckPage> {
                             leading: const Text('🇮🇳'),
                             title: const Text('ਪੰਜਾਬੀ'),
                             onTap: () {
-                              AppText.language = 'pa';
+                              setState(() {
+                                AppText.language = 'pa';
+                              });
                               Navigator.pop(context);
                             },
                           ),
@@ -894,7 +902,7 @@ class _TruckPageState extends State<TruckPage> {
             ),
             ListTile(
               leading: const Icon(Icons.local_shipping),
-              title: const Text('Food Trucks'),
+              title: Text(AppText.foodTrucks()),
               subtitle: Text('${foodTrucks.length} total'),
               onTap: () {
                 Navigator.pop(context);
@@ -903,7 +911,7 @@ class _TruckPageState extends State<TruckPage> {
             ),
             ListTile(
               leading: const Icon(Icons.home_work),
-              title: const Text('Home Kitchens'),
+              title: Text(AppText.homeKitchens()),
               subtitle: Text('${homeKitchens.length} total'),
               onTap: () {
                 Navigator.pop(context);
@@ -912,7 +920,7 @@ class _TruckPageState extends State<TruckPage> {
             ),
             ListTile(
               leading: const Icon(Icons.person),
-              title: const Text('Owner Portal'),
+              title: Text(AppText.ownerPortal()),
               onTap: () {
                 Navigator.pop(context);
                 _openOwnerPortal();

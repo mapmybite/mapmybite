@@ -77,4 +77,42 @@ class AppText {
         return 'Choose Language';
     }
   }
+  static String map() {
+    switch (language) {
+      case 'es':
+        return 'Mapa';
+      case 'hi':
+        return 'नक्शा';
+      case 'pa':
+        return 'ਨਕਸ਼ਾ';
+      default:
+        return 'Map';
+    }
+  }
+
+  static String orders() {
+    switch (language) {
+      case 'es':
+        return 'Pedidos';
+      case 'hi':
+        return 'ऑर्डर';
+      case 'pa':
+        return 'ਆਰਡਰ';
+      default:
+        return 'Orders';
+    }
+  }
+
+  static String ownerPortal() {
+    switch (language) {
+      case 'es':
+        return 'Panel de dueño';
+      case 'hi':
+        return 'ओनर पोर्टल';
+      case 'pa':
+        return 'ਓਨਰ ਪੋਰਟਲ';
+      default:
+        return 'Owner Portal';
+    }
+  }
 }

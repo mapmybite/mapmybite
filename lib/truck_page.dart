@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'app_text.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -820,6 +821,76 @@ class _TruckPageState extends State<TruckPage> {
                 'Map (${foodTrucks.length} trucks, ${homeKitchens.length} kitchens)',
               ),
               onTap: _goToMapHome,
+            ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: Text(AppText.languageLabel()),
+              onTap: () {
+                Navigator.pop(context);
+
+                showModalBottomSheet(
+                  context: context,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                  ),
+                  builder: (context) {
+                    return Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            AppText.chooseLanguage(),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          ListTile(
+                            leading: const Text('🇺🇸'),
+                            title: const Text('English'),
+                            onTap: () {
+                              AppText.language = 'en';
+                              Navigator.pop(context);
+                            },
+                          ),
+
+                          ListTile(
+                            leading: const Text('🇪🇸'),
+                            title: const Text('Español'),
+                            onTap: () {
+                              AppText.language = 'es';
+                              Navigator.pop(context);
+                            },
+                          ),
+
+                          ListTile(
+                            leading: const Text('🇮🇳'),
+                            title: const Text('हिन्दी'),
+                            onTap: () {
+                              AppText.language = 'hi';
+                              Navigator.pop(context);
+                            },
+                          ),
+
+                          ListTile(
+                            leading: const Text('🇮🇳'),
+                            title: const Text('ਪੰਜਾਬੀ'),
+                            onTap: () {
+                              AppText.language = 'pa';
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
             ListTile(
               leading: const Icon(Icons.local_shipping),

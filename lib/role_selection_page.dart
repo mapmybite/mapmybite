@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'truck_page.dart';
+import 'app_text.dart';
 
-class RoleSelectionPage extends StatelessWidget {
+class RoleSelectionPage extends StatefulWidget {
   const RoleSelectionPage({super.key});
+
+  @override
+  State<RoleSelectionPage> createState() => _RoleSelectionPageState();
+}
+
+class _RoleSelectionPageState extends State<RoleSelectionPage> {
+  String _language = 'en';
 
   void _showLanguageSheet(BuildContext context) {
     showModalBottomSheet(
@@ -17,7 +25,7 @@ class RoleSelectionPage extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: const [
+            children: [
               Text(
                 'Choose Language',
                 style: TextStyle(
@@ -27,20 +35,48 @@ class RoleSelectionPage extends StatelessWidget {
               ),
               SizedBox(height: 16),
               ListTile(
-                leading: Text('🇺🇸'),
-                title: Text('English'),
+                leading: const Text('🇺🇸'),
+                title: const Text('English'),
+                onTap: () {
+                  setState(() {
+                    _language = 'en';
+                    AppText.language = _language;
+                  });
+                  Navigator.pop(context);
+                },
               ),
               ListTile(
-                leading: Text('🇪🇸'),
-                title: Text('Español'),
+                leading: const Text('🇪🇸'),
+                title: const Text('Español'),
+                onTap: () {
+                  setState(() {
+                    _language = 'es';
+                    AppText.language = _language;
+                  });
+                  Navigator.pop(context);
+                },
               ),
               ListTile(
-                leading: Text('🇮🇳'),
-                title: Text('हिन्दी'),
+                leading: const Text('🇮🇳'),
+                title: const Text('हिन्दी'),
+                onTap: () {
+                  setState(() {
+                    _language = 'hi';
+                    AppText.language = _language;
+                  });
+                  Navigator.pop(context);
+                },
               ),
               ListTile(
-                leading: Text('🇮🇳'),
-                title: Text('ਪੰਜਾਬੀ'),
+                leading: const Text('🇮🇳'),
+                title: const Text('ਪੰਜਾਬੀ'),
+                onTap: () {
+                  setState(() {
+                    _language = 'pa';
+                    AppText.language = _language;
+                  });
+                  Navigator.pop(context);
+                },
               ),
             ],
           ),
@@ -53,18 +89,32 @@ class RoleSelectionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: TextButton.icon(
+              onPressed: () => _showLanguageSheet(context),
+              icon: const Icon(Icons.language, size: 18),
+              label: Text(
+                _language == 'en'
+                    ? 'English'
+                    : _language == 'es'
+                    ? 'Español'
+                    : _language == 'hi'
+                    ? 'हिन्दी'
+                    : 'ਪੰਜਾਬੀ',
+              ),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Stack(
           children: [
-            Positioned(
-              top: 8,
-              right: 12,
-              child: OutlinedButton.icon(
-                onPressed: () => _showLanguageSheet(context),
-                icon: const Icon(Icons.language, size: 18),
-                label: const Text('English'),
-              ),
-            ),
+
             Center(
               child: SingleChildScrollView(
                 padding:
@@ -96,8 +146,8 @@ class RoleSelectionPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Text(
-                        'Welcome to MapMyBite',
+                      Text(
+                        AppText.welcome(),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 28,
@@ -106,8 +156,8 @@ class RoleSelectionPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
-                        'Choose how you want to continue',
+                      Text(
+                        AppText.continueText(),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
@@ -117,10 +167,16 @@ class RoleSelectionPage extends StatelessWidget {
                       const SizedBox(height: 32),
                       _RoleCard(
                         icon: Icons.person,
-                        title: 'Continue as Customer',
+                        title: _language == 'en'
+                            ? 'Continue as Customer'
+                            : _language == 'es'
+                            ? 'Continuar como cliente'
+                            : _language == 'hi'
+                            ? 'ग्राहक के रूप में जारी रखें'
+                            : 'ਗਾਹਕ ਵਜੋਂ ਜਾਰੀ ਰੱਖੋ',
                         subtitle:
                         'Browse food trucks and home kitchens, build orders, and track your orders.',
-                        buttonText: 'Customer',
+                        buttonText: AppText.customer(),
                         buttonColor: Colors.orange,
                         onTap: () {
                           Navigator.push(
@@ -134,10 +190,16 @@ class RoleSelectionPage extends StatelessWidget {
                       const SizedBox(height: 18),
                       _RoleCard(
                         icon: Icons.storefront,
-                        title: 'Continue as Owner',
+                        title: _language == 'en'
+                            ? 'Continue as Owner'
+                            : _language == 'es'
+                            ? 'Continuar como dueño'
+                            : _language == 'hi'
+                            ? 'मालिक के रूप में जारी रखें'
+                            : 'ਮਾਲਕ ਵਜੋਂ ਜਾਰੀ ਰੱਖੋ',
                         subtitle:
                         'Manage your profile, menu, incoming orders, POS, and business tools.',
-                        buttonText: 'Owner',
+                        buttonText: AppText.owner(),
                         buttonColor: Colors.green,
                         onTap: () {
                           Navigator.push(

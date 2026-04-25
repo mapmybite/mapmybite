@@ -1,98 +1,161 @@
 import 'package:flutter/material.dart';
 import 'truck_page.dart';
 
-
 class RoleSelectionPage extends StatelessWidget {
   const RoleSelectionPage({super.key});
+
+  void _showLanguageSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Text(
+                'Choose Language',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 16),
+              ListTile(
+                leading: Text('🇺🇸'),
+                title: Text('English'),
+              ),
+              ListTile(
+                leading: Text('🇪🇸'),
+                title: Text('Español'),
+              ),
+              ListTile(
+                leading: Text('🇮🇳'),
+                title: Text('हिन्दी'),
+              ),
+              ListTile(
+                leading: Text('🇮🇳'),
+                title: Text('ਪੰਜਾਬੀ'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    height: 96,
-                    width: 96,
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.fastfood,
-                      size: 48,
-                      color: Colors.orange,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Welcome to MapMyBite',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Choose how you want to continue',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  _RoleCard(
-                    icon: Icons.person,
-                    title: 'Continue as Customer',
-                    subtitle:
-                    'Browse food trucks and home kitchens, build orders, and track your orders.',
-                    buttonText: 'Customer',
-                    buttonColor: Colors.orange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TruckPage(),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  _RoleCard(
-                    icon: Icons.storefront,
-                    title: 'Continue as Owner',
-                    subtitle:
-                    'Manage your profile, menu, incoming orders, POS, and business tools.',
-                    buttonText: 'Owner',
-                    buttonColor: Colors.green,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const TruckPage(
-                            openOwnerPortalOnStart: true,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+        child: Stack(
+          children: [
+            Positioned(
+              top: 8,
+              right: 12,
+              child: OutlinedButton.icon(
+                onPressed: () => _showLanguageSheet(context),
+                icon: const Icon(Icons.language, size: 18),
+                label: const Text('English'),
               ),
             ),
-          ),
+            Center(
+              child: SingleChildScrollView(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        height: 96,
+                        width: 96,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.fastfood,
+                          size: 48,
+                          color: Colors.orange,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Welcome to MapMyBite',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Choose how you want to continue',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      _RoleCard(
+                        icon: Icons.person,
+                        title: 'Continue as Customer',
+                        subtitle:
+                        'Browse food trucks and home kitchens, build orders, and track your orders.',
+                        buttonText: 'Customer',
+                        buttonColor: Colors.orange,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TruckPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      _RoleCard(
+                        icon: Icons.storefront,
+                        title: 'Continue as Owner',
+                        subtitle:
+                        'Manage your profile, menu, incoming orders, POS, and business tools.',
+                        buttonText: 'Owner',
+                        buttonColor: Colors.green,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TruckPage(
+                                openOwnerPortalOnStart: true,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

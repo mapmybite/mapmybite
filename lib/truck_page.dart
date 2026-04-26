@@ -34,6 +34,22 @@ class _TruckPageState extends State<TruckPage> {
   bool _locationPermissionGranted = false;
   bool _didTryInitialUserCenter = false;
   Map<String, dynamic>? _ownerBusiness;
+  // Customer page filters
+  String _searchQuery = '';
+  String _selectedCuisine = 'All';
+  bool _isListView = false;
+  final Set<String> _favoriteIds = {};
+  bool _showFavoritesOnly = false;
+
+  final List<String> _cuisineFilters = [
+    'All',
+    'Mexican Food',
+    'Fast Food',
+    'Indian Food',
+    'Punjabi Food',
+    'Punjabi Home Food',
+    'Indian Vegetarian',
+  ];
 
   static const LatLng _defaultUsaPosition = LatLng(37.9577, -121.2908);
   LatLng _initialPosition = _defaultUsaPosition;
@@ -182,6 +198,30 @@ class _TruckPageState extends State<TruckPage> {
       'dailySpecial': 'chole bhature breakfast special before 11 AM',
     },
   ];
+  // Combine all vendors
+  List<Map<String, dynamic>> get _allVendors {
+    return [...foodTrucks, ...homeKitchens];
+  }
+
+// Apply search + cuisine filter
+  List<Map<String, dynamic>> get _filteredVendors {
+    return _allVendors.where((vendor) {
+      final id = vendor['id'].toString();
+
+      final matchesSearch = vendor['title']
+          .toString()
+          .toLowerCase()
+          .contains(_searchQuery.toLowerCase());
+
+      final matchesCuisine = _selectedCuisine == 'All' ||
+          vendor['cuisine'] == _selectedCuisine;
+
+      final matchesFavorites = !_showFavoritesOnly ||
+          _favoriteIds.contains(id);
+
+      return matchesSearch && matchesCuisine && matchesFavorites;
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -543,32 +583,20 @@ class _TruckPageState extends State<TruckPage> {
   Set<Marker> _buildMarkers() {
     final Set<Marker> markers = {};
 
-    for (final truck in foodTrucks) {
+    for (final item in _filteredVendors) {
       markers.add(
         Marker(
-          markerId: MarkerId(truck['id'].toString()),
-          position: _getLatLngFromItem(truck),
-          icon: truckIcon ?? BitmapDescriptor.defaultMarker,
-          infoWindow: InfoWindow(title: truck['title']?.toString() ?? ''),
-          onTap: () async {
-            await _openBusinessFromMap(truck);
-          },
-        ),
-      );
-    }
-
-    for (final kitchen in homeKitchens) {
-      markers.add(
-        Marker(
-          markerId: MarkerId(kitchen['id'].toString()),
-          position: _getLatLngFromItem(kitchen),
-          icon: homeKitchenIcon ??
+          markerId: MarkerId(item['id'].toString()),
+          position: _getLatLngFromItem(item),
+          icon: item['type'] == 'truck'
+              ? (truckIcon ?? BitmapDescriptor.defaultMarker)
+              : (homeKitchenIcon ??
               BitmapDescriptor.defaultMarkerWithHue(
                 BitmapDescriptor.hueViolet,
-              ),
-          infoWindow: InfoWindow(title: kitchen['title']?.toString() ?? ''),
+              )),
+          infoWindow: InfoWindow(title: item['title']?.toString() ?? ''),
           onTap: () async {
-            await _openBusinessFromMap(kitchen);
+            await _openBusinessFromMap(item);
           },
         ),
       );
@@ -680,7 +708,169 @@ class _TruckPageState extends State<TruckPage> {
       },
     );
   }
+  Widget _buildCustomerSearchPanel() {
+    return Positioned(
+      top: 12,
+      left: 12,
+      right: 12,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: TextField(
+                decoration: const InputDecoration(
+                  icon: Icon(Icons.search),
+                  hintText: 'Search food trucks or kitchens',
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 42,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _cuisineFilters.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final cuisine = _cuisineFilters[index];
+                  final selected = cuisine == _selectedCuisine;
 
+                  return ChoiceChip(
+                    label: Text(cuisine),
+                    selected: selected,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedCuisine = cuisine;
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 10),
+
+// Map / List toggle
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: Icon(
+                      _showFavoritesOnly ? Icons.favorite : Icons.favorite_border,
+                      color: _showFavoritesOnly ? Colors.red : null,
+                    ),
+                    label: Text('Favorites (${_favoriteIds.length})'),
+                    onPressed: () {
+                      setState(() {
+                        _showFavoritesOnly = !_showFavoritesOnly;
+                        _isListView = true;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'List',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Switch(
+                  value: _isListView,
+                  onChanged: (value) {
+                    setState(() {
+                      _isListView = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildListView() {
+    final items = _filteredVendors;
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 130, 12, 12),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(12),
+            leading: CircleAvatar(
+              backgroundColor: item['type'] == 'truck'
+                  ? Colors.orange.shade100
+                  : Colors.purple.shade100,
+              child: Icon(
+                item['type'] == 'truck'
+                    ? Icons.local_shipping
+                    : Icons.home_work,
+                color: item['type'] == 'truck'
+                    ? Colors.orange
+                    : Colors.purple,
+              ),
+            ),
+            title: Text(
+              item['title']?.toString() ?? '',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              '${item['cuisine'] ?? ''}\n${item['timing'] ?? ''}',
+            ),
+            isThreeLine: true,
+            trailing: IconButton(
+              icon: Icon(
+                _favoriteIds.contains(item['id'].toString())
+                    ? Icons.favorite
+                    : Icons.favorite_border,
+                color: _favoriteIds.contains(item['id'].toString())
+                    ? Colors.red
+                    : Colors.grey,
+              ),
+              onPressed: () {
+                setState(() {
+                  final id = item['id'].toString();
+
+                  if (_favoriteIds.contains(id)) {
+                    _favoriteIds.remove(id);
+                  } else {
+                    _favoriteIds.add(id);
+                  }
+                });
+              },
+            ),
+            onTap: () {
+              _openProfilePage(item);
+            },
+          ),
+        );
+      },
+    );
+  }
   Future<void> _goToMapHome() async {
     Navigator.pop(context);
 
@@ -974,24 +1164,32 @@ class _TruckPageState extends State<TruckPage> {
         ),
       ),
       body: iconsLoaded
-          ? GoogleMap(
-        initialCameraPosition: CameraPosition(
-          target: _initialPosition,
-          zoom: 9,
-        ),
-        mapType: MapType.normal,
-        onMapCreated: (controller) async {
-          mapController = controller;
+          ? Stack(
+        children: [
+          _isListView
+              ? _buildListView()
+              : GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _initialPosition,
+              zoom: 9,
+            ),
+            mapType: MapType.normal,
+            onMapCreated: (controller) async {
+              mapController = controller;
 
-          if (_currentUserPosition != null && !_didTryInitialUserCenter) {
-            _didTryInitialUserCenter = true;
-            await _animateToLocation(_currentUserPosition!, zoom: 13);
-          }
-        },
-        markers: _buildMarkers(),
-        myLocationEnabled: _locationPermissionGranted,
-        myLocationButtonEnabled: _locationPermissionGranted,
-        zoomControlsEnabled: true,
+              if (_currentUserPosition != null &&
+                  !_didTryInitialUserCenter) {
+                _didTryInitialUserCenter = true;
+                await _animateToLocation(_currentUserPosition!, zoom: 13);
+              }
+            },
+            markers: _buildMarkers(),
+            myLocationEnabled: _locationPermissionGranted,
+            myLocationButtonEnabled: _locationPermissionGranted,
+            zoomControlsEnabled: true,
+          ),
+          _buildCustomerSearchPanel(),
+        ],
       )
           : const Center(
         child: CircularProgressIndicator(),

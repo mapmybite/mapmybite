@@ -21,11 +21,15 @@ import 'orders_page.dart';
 class TruckProfilePage extends StatefulWidget {
   final Map<String, dynamic> truck;
   final bool isOwner;
+  final bool initialIsFavorite;
+  final ValueChanged<bool>? onFavoriteChanged;
 
   const TruckProfilePage({
     super.key,
     required this.truck,
     this.isOwner = false,
+    this.initialIsFavorite = false,
+    this.onFavoriteChanged,
   });
 
   @override
@@ -38,6 +42,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   Map<String, int> _selectedMenuCart = {};
   double _selectedMenuTotal = 0.0;
   List<Map<String, dynamic>> _selectedOrderItems = [];
+  @override
+  void initState() {
+    super.initState();
+    _isFavorite = widget.initialIsFavorite;
+  }
   bool get _canUseOrdering {
     final String plan = (widget.truck['plan'] ?? 'free').toString();
     final bool isVerified = widget.truck['isVerified'] == true;
@@ -485,6 +494,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     setState(() {
       _isFavorite = !_isFavorite;
     });
+
+    // 🔥 send update back to main page
+    if (widget.onFavoriteChanged != null) {
+      widget.onFavoriteChanged!(_isFavorite);
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

@@ -10,6 +10,7 @@ import 'orders_page.dart';
 import 'customer_order_history_page.dart';
 import 'package:mapmybite/notification_data.dart';
 import 'package:mapmybite/notifications_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TruckPage extends StatefulWidget {
   final bool openOwnerPortalOnStart;
@@ -38,7 +39,7 @@ class _TruckPageState extends State<TruckPage> {
   String _searchQuery = '';
   String _selectedCuisine = 'All';
   bool _isListView = false;
-  final Set<String> _favoriteIds = {};
+  Set<String> _favoriteIds = {};
   bool _showFavoritesOnly = false;
 
   final List<String> _cuisineFilters = [
@@ -227,6 +228,7 @@ class _TruckPageState extends State<TruckPage> {
   void initState() {
     super.initState();
     _loadIcons();
+    _loadFavorites();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
@@ -437,6 +439,19 @@ class _TruckPageState extends State<TruckPage> {
         builder: (context) => TruckProfilePage(
           truck: item,
           isOwner: isOwner,
+          initialIsFavorite: _favoriteIds.contains(item['id'].toString()),
+          onFavoriteChanged: (isFavorite) {
+            setState(() {
+              final id = item['id'].toString();
+
+              if (isFavorite) {
+                _favoriteIds.add(id);
+              } else {
+                _favoriteIds.remove(id);
+              }
+              _saveFavorites();
+            });
+          },
         ),
       ),
     ).then((_) {
@@ -603,6 +618,21 @@ class _TruckPageState extends State<TruckPage> {
     }
 
     return markers;
+  }
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> saved = prefs.getStringList('favorites') ?? [];
+
+    if (!mounted) return;
+
+    setState(() {
+      _favoriteIds = saved.toSet();
+    });
+  }
+
+  Future<void> _saveFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('favorites', _favoriteIds.toList());
   }
 
   void _showBusinessList(String title, List<Map<String, dynamic>> items) {
@@ -860,6 +890,7 @@ class _TruckPageState extends State<TruckPage> {
                   } else {
                     _favoriteIds.add(id);
                   }
+                  _saveFavorites();
                 });
               },
             ),

@@ -1003,7 +1003,16 @@ class _TruckPageState extends State<TruckPage> {
                   });
                 },
                 onSubmitted: (value) {
-                  _searchCityOrArea(value);
+                  final text = value.trim().toLowerCase();
+
+                  final looksLikeCity =
+                      text.contains(',') ||
+                          text.contains(' ca') ||
+                          text.contains(' california');
+
+                  if (looksLikeCity) {
+                    _searchCityOrArea(value);
+                  }
                 },
               ),
             ),

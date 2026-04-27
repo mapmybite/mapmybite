@@ -44,7 +44,34 @@ class _TruckPageState extends State<TruckPage> {
   bool _showFavoritesOnly = false;
   LatLng? _searchCenterPosition;
   double _searchRadiusMiles = 25;
+  Future<void> _fitMapToFilteredResults() async {
+    final items = _filteredVendors;
 
+    if (items.isEmpty || mapController == null) return;
+
+    double minLat = 90;
+    double maxLat = -90;
+    double minLng = 180;
+    double maxLng = -180;
+
+    for (var item in items) {
+      final LatLng pos = _getLatLngFromItem(item);
+
+      if (pos.latitude < minLat) minLat = pos.latitude;
+      if (pos.latitude > maxLat) maxLat = pos.latitude;
+      if (pos.longitude < minLng) minLng = pos.longitude;
+      if (pos.longitude > maxLng) maxLng = pos.longitude;
+    }
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+
+    await mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(bounds, 80),
+    );
+  }
   final List<String> _cuisineFilters = [
     'All',
     'Mexican Food',
@@ -212,23 +239,35 @@ class _TruckPageState extends State<TruckPage> {
     final results = _allVendors.where((vendor) {
       final id = vendor['id'].toString();
 
-      final String query = _searchQuery.toLowerCase().trim();
+      String cleanSearchText(String text) {
+        return text
+            .toLowerCase()
+            .replaceAll(RegExp(r'\b(food|cuisine|truck|kitchen|restaurant|near|me)\b'), '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+      }
 
-      final String searchableText = [
+      final String query = cleanSearchText(_searchQuery);
+
+      final String searchableText = cleanSearchText([
         vendor['title'],
         vendor['cuisine'],
         vendor['type'],
         vendor['menu'],
         vendor['description'],
-      ].map((value) => value?.toString().toLowerCase() ?? '').join(' ');
+      ].map((value) => value?.toString() ?? '').join(' '));
 
-      final matchesSearch = query.isEmpty || searchableText.contains(query);
+      final List<String> queryWords =
+      query.split(' ').where((word) => word.trim().isNotEmpty).toList();
+
+      final bool matchesSearch = queryWords.isEmpty ||
+          queryWords.any((word) => searchableText.contains(word));
 
       final matchesCuisine = _selectedCuisine == 'All' ||
           vendor['cuisine'] == _selectedCuisine;
 
-      final matchesFavorites = !_showFavoritesOnly ||
-          _favoriteIds.contains(id);
+      final matchesFavorites =
+          !_showFavoritesOnly || _favoriteIds.contains(id);
 
       bool matchesRadius = true;
 
@@ -249,7 +288,7 @@ class _TruckPageState extends State<TruckPage> {
       return matchesSearch && matchesCuisine && matchesFavorites && matchesRadius;
     }).toList();
 
-// 🔥 sort by distance
+    // 🔥 sort by distance
     if (_currentUserPosition != null) {
       results.sort(
             (a, b) => _distanceInMilesToVendor(a)
@@ -499,6 +538,7 @@ class _TruckPageState extends State<TruckPage> {
           nearbyCount == 0 ? Colors.black87 : Colors.green.shade700,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.grey.shade200),
           ),
           margin: const EdgeInsets.all(14),
           content: Row(
@@ -835,11 +875,12 @@ class _TruckPageState extends State<TruckPage> {
                     border: Border.all(color: Colors.green.shade200),
                   ),
                   child: const Text(
-                    'No vendors near you yet? Invite a food truck or home kitchen to join MapMyBite — it’s free right now.',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
-                    ),
+                    'No vendors near you yet? Invite a food truck or home kitchen to join MapMyBite — it’s free to grow your food business!',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
+                        color: Colors.green,
+                      ),
                   ),
                 ),
               ],
@@ -992,14 +1033,20 @@ class _TruckPageState extends State<TruckPage> {
                 ],
               ),
               child: TextField(
-                decoration: const InputDecoration(
-                  icon: Icon(Icons.search),
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search, color: Colors.deepPurple),
                   hintText: 'Search food trucks or kitchens',
+                  hintStyle: TextStyle(color: Colors.grey),
                   border: InputBorder.none,
                 ),
                 onChanged: (value) {
                   setState(() {
                     _searchQuery = value;
+                    _selectedCuisine = 'All';
+                  });
+
+                  Future.delayed(const Duration(milliseconds: 300), () {
+                    _fitMapToFilteredResults();
                   });
                 },
                 onSubmitted: (value) {
@@ -1046,11 +1093,27 @@ class _TruckPageState extends State<TruckPage> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _showFavoritesOnly
+                          ? Colors.pink.shade50
+                          : Colors.grey.shade100,
+                      side: BorderSide(
+                        color: _showFavoritesOnly
+                            ? Colors.pink.shade200
+                            : Colors.grey.shade300,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
                     icon: Icon(
                       _showFavoritesOnly ? Icons.favorite : Icons.favorite_border,
-                      color: _showFavoritesOnly ? Colors.red : null,
+                      color: Colors.pink,
                     ),
-                    label: Text('Favorites (${_favoriteIds.length})'),
+                    label: Text(
+                      'Favorites (${_favoriteIds.length})',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     onPressed: () {
                       setState(() {
                         _showFavoritesOnly = !_showFavoritesOnly;
@@ -1061,8 +1124,18 @@ class _TruckPageState extends State<TruckPage> {
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.location_on),
-                  label: const Text('Areas'),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.indigo.shade50,
+                    side: BorderSide(color: Colors.indigo.shade200),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  icon: const Icon(Icons.location_on, color: Colors.indigo),
+                  label: const Text(
+                    'Areas',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   onPressed: _showActiveAreas,
                 ),
                 const SizedBox(width: 10),
@@ -1072,6 +1145,10 @@ class _TruckPageState extends State<TruckPage> {
                 ),
                 Switch(
                   value: _isListView,
+                  activeColor: Colors.white,
+                  activeTrackColor: Colors.orange,
+                  inactiveThumbColor: Colors.white,
+                  inactiveTrackColor: Colors.orange.shade200,
                   onChanged: (value) {
                     setState(() {
                       _isListView = value;
@@ -1084,6 +1161,59 @@ class _TruckPageState extends State<TruckPage> {
         ),
       ),
     );
+  }
+  Color _cuisineBadgeColor(String cuisine) {
+    final text = cuisine.toLowerCase();
+
+    if (text.contains('mexican')) return Colors.green;
+    if (text.contains('indian') || text.contains('punjabi')) return Colors.orange;
+    if (text.contains('fast')) return Colors.red;
+    if (text.contains('vegetarian')) return Colors.purple;
+    if (text.contains('home')) return Colors.deepPurple;
+
+    // 🌎 NEW: smart fallback colors
+    if (text.contains('chinese')) return Colors.redAccent;
+    if (text.contains('italian')) return Colors.green.shade700;
+    if (text.contains('thai')) return Colors.teal;
+    if (text.contains('mediterranean')) return Colors.blue;
+    if (text.contains('american')) return Colors.indigo;
+
+    // fallback
+    return Colors.blueGrey;
+  }
+  bool _isOpenNow(String timing) {
+    try {
+      final parts = timing.split('-');
+      if (parts.length != 2) return false;
+
+      final now = TimeOfDay.now();
+
+      TimeOfDay parseTime(String t) {
+        final time = t.trim().toLowerCase();
+        final isPM = time.contains('pm');
+        final cleaned = time.replaceAll(RegExp(r'[^0-9:]'), '');
+        final split = cleaned.split(':');
+
+        int hour = int.parse(split[0]);
+        int minute = split.length > 1 ? int.parse(split[1]) : 0;
+
+        if (isPM && hour != 12) hour += 12;
+        if (!isPM && hour == 12) hour = 0;
+
+        return TimeOfDay(hour: hour, minute: minute);
+      }
+
+      final start = parseTime(parts[0]);
+      final end = parseTime(parts[1]);
+
+      final nowMinutes = now.hour * 60 + now.minute;
+      final startMinutes = start.hour * 60 + start.minute;
+      final endMinutes = end.hour * 60 + end.minute;
+
+      return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+    } catch (e) {
+      return false;
+    }
   }
   Widget _buildListView() {
     final items = _filteredVendors;
@@ -1120,12 +1250,14 @@ class _TruckPageState extends State<TruckPage> {
         final item = items[index];
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 10),
+          elevation: 4,
+          shadowColor: Colors.black12,
+          margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.all(12),
+            contentPadding: const EdgeInsets.all(14),
             leading: CircleAvatar(
               backgroundColor: item['type'] == 'truck'
                   ? Colors.orange.shade100
@@ -1141,14 +1273,63 @@ class _TruckPageState extends State<TruckPage> {
             ),
             title: Text(
               item['title']?.toString() ?? '',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
-            subtitle: Text(
-              '${item['cuisine'] ?? ''}\n'
-                  '${item['timing'] ?? ''}\n'
-                  '${_distanceInMilesToVendor(item) == 999999
-                  ? 'Distance not available'
-                  : '${_distanceInMilesToVendor(item).toStringAsFixed(1)} mi away'}',
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _cuisineBadgeColor(item['cuisine'] ?? '').withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    item['cuisine'] ?? '',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _cuisineBadgeColor(item['cuisine'] ?? ''),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(item['timing'] ?? ''),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _isOpenNow(item['timing'] ?? '')
+                            ? Colors.green.shade50
+                            : Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _isOpenNow(item['timing'] ?? '') ? 'OPEN' : 'CLOSED',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _isOpenNow(item['timing'] ?? '')
+                              ? Colors.green
+                              : Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _distanceInMilesToVendor(item) == 999999
+                      ? 'Distance not available'
+                      : '${_distanceInMilesToVendor(item).toStringAsFixed(1)} mi away',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
             ),
             isThreeLine: true,
             trailing: IconButton(

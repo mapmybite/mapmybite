@@ -11,6 +11,7 @@ import 'customer_order_history_page.dart';
 import 'package:mapmybite/notification_data.dart';
 import 'package:mapmybite/notifications_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geocoding/geocoding.dart';
 
 class TruckPage extends StatefulWidget {
   final bool openOwnerPortalOnStart;
@@ -41,6 +42,8 @@ class _TruckPageState extends State<TruckPage> {
   bool _isListView = false;
   Set<String> _favoriteIds = {};
   bool _showFavoritesOnly = false;
+  LatLng? _searchCenterPosition;
+  double _searchRadiusMiles = 25;
 
   final List<String> _cuisineFilters = [
     'All',
@@ -206,13 +209,20 @@ class _TruckPageState extends State<TruckPage> {
 
 // Apply search + cuisine filter
   List<Map<String, dynamic>> get _filteredVendors {
-    return _allVendors.where((vendor) {
+    final results = _allVendors.where((vendor) {
       final id = vendor['id'].toString();
 
-      final matchesSearch = vendor['title']
-          .toString()
-          .toLowerCase()
-          .contains(_searchQuery.toLowerCase());
+      final String query = _searchQuery.toLowerCase().trim();
+
+      final String searchableText = [
+        vendor['title'],
+        vendor['cuisine'],
+        vendor['type'],
+        vendor['menu'],
+        vendor['description'],
+      ].map((value) => value?.toString().toLowerCase() ?? '').join(' ');
+
+      final matchesSearch = query.isEmpty || searchableText.contains(query);
 
       final matchesCuisine = _selectedCuisine == 'All' ||
           vendor['cuisine'] == _selectedCuisine;
@@ -220,8 +230,34 @@ class _TruckPageState extends State<TruckPage> {
       final matchesFavorites = !_showFavoritesOnly ||
           _favoriteIds.contains(id);
 
-      return matchesSearch && matchesCuisine && matchesFavorites;
+      bool matchesRadius = true;
+
+      if (_searchCenterPosition != null) {
+        final LatLng vendorPosition = _getLatLngFromItem(vendor);
+
+        final double meters = Geolocator.distanceBetween(
+          _searchCenterPosition!.latitude,
+          _searchCenterPosition!.longitude,
+          vendorPosition.latitude,
+          vendorPosition.longitude,
+        );
+
+        final double miles = meters / 1609.34;
+        matchesRadius = miles <= _searchRadiusMiles;
+      }
+
+      return matchesSearch && matchesCuisine && matchesFavorites && matchesRadius;
     }).toList();
+
+// 🔥 sort by distance
+    if (_currentUserPosition != null) {
+      results.sort(
+            (a, b) => _distanceInMilesToVendor(a)
+            .compareTo(_distanceInMilesToVendor(b)),
+      );
+    }
+
+    return results;
   }
 
   @override
@@ -397,6 +433,11 @@ class _TruckPageState extends State<TruckPage> {
   }
 
   Future<void> _centerOnUserLocation() async {
+    setState(() {
+      _searchCenterPosition = null;
+      _searchQuery = '';
+      _showFavoritesOnly = false;
+    });
     if (_currentUserPosition != null) {
       await _animateToLocation(_currentUserPosition!, zoom: 13);
       return;
@@ -417,6 +458,83 @@ class _TruckPageState extends State<TruckPage> {
     );
 
     await _animateToLocation(_defaultUsaPosition, zoom: 9);
+  }
+  Future<void> _searchCityOrArea(String text) async {
+    final String query = text.trim();
+
+    if (query.isEmpty) return;
+
+    try {
+      final locations = await locationFromAddress(query);
+
+      if (locations.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not find "$query"')),
+        );
+        return;
+      }
+
+      final target = LatLng(
+        locations.first.latitude,
+        locations.first.longitude,
+      );
+      setState(() {
+        _searchCenterPosition = target;
+        _searchQuery = '';
+        _showFavoritesOnly = false;
+      });
+
+      await _animateToLocation(target, zoom: 10.5);
+
+      if (!mounted) return;
+
+      final nearbyCount = _filteredVendors.length;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor:
+          nearbyCount == 0 ? Colors.black87 : Colors.green.shade700,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          margin: const EdgeInsets.all(14),
+          content: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                nearbyCount == 0 ? Icons.location_off : Icons.location_on,
+                color: nearbyCount == 0 ? Colors.orange : Colors.white,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  nearbyCount == 0
+                      ? 'Showing $query\nNo vendors here yet. Invite food trucks or home kitchens to join MapMyBite — it’s free!'
+                      : 'Showing $query\n$nearbyCount vendor(s) available within ${_searchRadiusMiles.toInt()} miles.',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('City search error: $e');
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not search "$query"')),
+      );
+    }
   }
 
   Future<void> _openBusinessFromMap(Map<String, dynamic> item) async {
@@ -619,6 +737,20 @@ class _TruckPageState extends State<TruckPage> {
 
     return markers;
   }
+  Set<Circle> _buildRadiusCircles() {
+    if (_searchCenterPosition == null) return {};
+
+    return {
+      Circle(
+        circleId: const CircleId('search_radius'),
+        center: _searchCenterPosition!,
+        radius: _searchRadiusMiles * 1609.34,
+        fillColor: Colors.orange.withOpacity(0.12),
+        strokeColor: Colors.orange,
+        strokeWidth: 2,
+      ),
+    };
+  }
   Future<void> _loadFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String> saved = prefs.getStringList('favorites') ?? [];
@@ -633,6 +765,102 @@ class _TruckPageState extends State<TruckPage> {
   Future<void> _saveFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('favorites', _favoriteIds.toList());
+  }
+  void _showActiveAreas() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.location_on, color: Colors.orange),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Active Areas',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'MapMyBite is currently focusing on these areas first:',
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 16),
+                _activeAreaTile('Stockton, CA', 'Food trucks and home kitchens'),
+                _activeAreaTile('Manteca, CA', 'Coming soon'),
+                _activeAreaTile('Lathrop, CA', 'Coming soon'),
+                _activeAreaTile('French Camp, CA', 'Coming soon'),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: const Text(
+                    'No vendors near you yet? Invite a food truck or home kitchen to join MapMyBite — it’s free right now.',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _activeAreaTile(String city, String subtitle) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.place, color: Colors.orange),
+      title: Text(
+        city,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(subtitle),
+    );
   }
 
   void _showBusinessList(String title, List<Map<String, dynamic>> items) {
@@ -711,7 +939,11 @@ class _TruckPageState extends State<TruckPage> {
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
-                              '${item['cuisine'] ?? ''}\n${item['timing'] ?? ''}',
+                              '${item['cuisine'] ?? ''}\n'
+                                  '${item['timing'] ?? ''}\n'
+                                  '${_distanceInMilesToVendor(item) == 999999
+                                  ? 'Distance not available'
+                                  : '${_distanceInMilesToVendor(item).toStringAsFixed(1)} mi away'}',
                             ),
                           ),
                           isThreeLine: true,
@@ -770,6 +1002,9 @@ class _TruckPageState extends State<TruckPage> {
                     _searchQuery = value;
                   });
                 },
+                onSubmitted: (value) {
+                  _searchCityOrArea(value);
+                },
               ),
             ),
             const SizedBox(height: 10),
@@ -815,6 +1050,12 @@ class _TruckPageState extends State<TruckPage> {
                     },
                   ),
                 ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.location_on),
+                  label: const Text('Areas'),
+                  onPressed: _showActiveAreas,
+                ),
                 const SizedBox(width: 10),
                 const Text(
                   'List',
@@ -837,6 +1078,31 @@ class _TruckPageState extends State<TruckPage> {
   }
   Widget _buildListView() {
     final items = _filteredVendors;
+    if (items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.search_off, size: 60, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'No food trucks or home kitchens available here right now',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Text(
+                'Help grow MapMyBite in your area.\nInvite vendors to join — it’s free!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(12, 130, 12, 12),
@@ -869,7 +1135,11 @@ class _TruckPageState extends State<TruckPage> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
-              '${item['cuisine'] ?? ''}\n${item['timing'] ?? ''}',
+              '${item['cuisine'] ?? ''}\n'
+                  '${item['timing'] ?? ''}\n'
+                  '${_distanceInMilesToVendor(item) == 999999
+                  ? 'Distance not available'
+                  : '${_distanceInMilesToVendor(item).toStringAsFixed(1)} mi away'}',
             ),
             isThreeLine: true,
             trailing: IconButton(
@@ -901,6 +1171,20 @@ class _TruckPageState extends State<TruckPage> {
         );
       },
     );
+  }
+  double _distanceInMilesToVendor(Map<String, dynamic> item) {
+    if (_currentUserPosition == null) return 999999;
+
+    final LatLng vendorPosition = _getLatLngFromItem(item);
+
+    final double meters = Geolocator.distanceBetween(
+      _currentUserPosition!.latitude,
+      _currentUserPosition!.longitude,
+      vendorPosition.latitude,
+      vendorPosition.longitude,
+    );
+
+    return meters / 1609.34;
   }
   Future<void> _goToMapHome() async {
     Navigator.pop(context);
@@ -1140,6 +1424,18 @@ class _TruckPageState extends State<TruckPage> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.favorite, color: Colors.red),
+              title: const Text('My Favorites'),
+              subtitle: Text('${_favoriteIds.length} saved'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _showFavoritesOnly = true;
+                  _isListView = true;
+                });
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.person),
               title: Text(AppText.ownerPortal()),
               onTap: () {
@@ -1215,6 +1511,7 @@ class _TruckPageState extends State<TruckPage> {
               }
             },
             markers: _buildMarkers(),
+            circles: _buildRadiusCircles(),
             myLocationEnabled: _locationPermissionGranted,
             myLocationButtonEnabled: _locationPermissionGranted,
             zoomControlsEnabled: true,

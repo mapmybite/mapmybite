@@ -47,6 +47,16 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     super.initState();
     _isFavorite = widget.initialIsFavorite;
   }
+  Color _planColor(dynamic plan) {
+    final p = plan.toString().toLowerCase();
+
+    if (p == 'free') return Colors.grey;
+    if (p == 'pro') return Colors.blue;
+    if (p == 'premium') return Colors.purple;
+    if (p == 'platinum') return Colors.orange;
+
+    return Colors.grey;
+  }
   bool get _canUseOrdering {
     final String plan = (widget.truck['plan'] ?? 'free').toString();
     final bool isVerified = widget.truck['isVerified'] == true;
@@ -2505,12 +2515,67 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                widget.truck['title'] ?? '',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.truck['title'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Row(
+                    children: [
+                      // ✅ VERIFIED
+                      if (widget.truck['isVerified'] == true)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.verified, color: Colors.blue, size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                'Verified',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      const SizedBox(width: 8),
+
+                      // ✅ PLAN
+                      if (widget.truck['plan'] != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _planColor(widget.truck['plan']).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            widget.truck['plan'].toString().toUpperCase(),
+                            style: TextStyle(
+                              color: _planColor(widget.truck['plan']),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 6),

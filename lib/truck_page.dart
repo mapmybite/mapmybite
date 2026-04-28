@@ -91,6 +91,8 @@ class _TruckPageState extends State<TruckPage> {
       'id': 'truck_1',
       'title': 'Tasty Truck',
       'cuisine': 'Mexican Food',
+      'isVerified': true,
+      'plan': 'pro', // or free / premium / platinum
       'position': const LatLng(37.9577, -121.2908),
       'type': 'truck',
       'phone': '(209) 111-1111',
@@ -114,6 +116,8 @@ class _TruckPageState extends State<TruckPage> {
       'id': 'truck_2',
       'title': 'Street Bites',
       'cuisine': 'Fast Food',
+      'isVerified': true,
+      'plan': 'premium', // or free / premium / platinum
       'position': const LatLng(37.9650, -121.3000),
       'type': 'truck',
       'phone': '(209) 222-2222',
@@ -137,6 +141,8 @@ class _TruckPageState extends State<TruckPage> {
       'id': 'truck_3',
       'title': 'Curry Stop',
       'cuisine': 'Indian Food',
+      'isVerified': true,
+      'plan': 'platinum', // or free / premium / platinum
       'position': const LatLng(37.9500, -121.2800),
       'type': 'truck',
       'phone': '(209) 333-3333',
@@ -160,6 +166,8 @@ class _TruckPageState extends State<TruckPage> {
       'id': 'truck_4',
       'title': 'Mannat\'s Food Truck',
       'cuisine': 'Punjabi Food',
+      'isVerified': true,
+      'plan': 'pro', // or free / premium / platinum
       'position': const LatLng(37.9545, -121.2750),
       'type': 'truck',
       'phone': '(209) 444-4444',
@@ -186,6 +194,8 @@ class _TruckPageState extends State<TruckPage> {
       'id': 'kitchen_1',
       'title': 'Maa Da Swad Kitchen',
       'cuisine': 'Punjabi Home Food',
+      'isVerified': true,
+      'plan': 'free', // or free / premium / platinum
       'position': const LatLng(37.9700, -121.3100),
       'type': 'kitchen',
       'phone': '(209) 555-1111',
@@ -209,6 +219,8 @@ class _TruckPageState extends State<TruckPage> {
       'id': 'kitchen_2',
       'title': 'Taste of Home Kitchen',
       'cuisine': 'Indian Vegetarian',
+      'isVerified': true,
+      'plan': 'platinum', // or free / premium / platinum
       'position': const LatLng(37.9450, -121.2950),
       'type': 'kitchen',
       'phone': '(209) 555-2222',
@@ -971,11 +983,28 @@ class _TruckPageState extends State<TruckPage> {
                                   : Colors.purple,
                             ),
                           ),
-                          title: Text(
-                            item['title']?.toString() ?? '',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item['title']?.toString() ?? '',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (item['isVerified'] == true)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 6),
+                                  child: Icon(
+                                    Icons.verified,
+                                    color: Colors.blue,
+                                    size: 18,
+                                  ),
+                                ),
+                            ],
                           ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 6),
@@ -1181,6 +1210,16 @@ class _TruckPageState extends State<TruckPage> {
     // fallback
     return Colors.blueGrey;
   }
+  Color _planColor(String plan) {
+    final p = plan.toLowerCase();
+
+    if (p == 'free') return Colors.grey;
+    if (p == 'pro') return Colors.blue;
+    if (p == 'premium') return Colors.purple;
+    if (p == 'platinum') return Colors.orange;
+
+    return Colors.grey;
+  }
   bool _isOpenNow(String timing) {
     try {
       final parts = timing.split('-');
@@ -1271,12 +1310,28 @@ class _TruckPageState extends State<TruckPage> {
                     : Colors.purple,
               ),
             ),
-            title: Text(
-              item['title']?.toString() ?? '',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item['title']?.toString() ?? '',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (item['isVerified'] == true)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: Icon(
+                      Icons.verified,
+                      color: Colors.blue,
+                      size: 18,
+                    ),
+                  ),
+              ],
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

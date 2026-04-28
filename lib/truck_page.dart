@@ -12,6 +12,7 @@ import 'package:mapmybite/notification_data.dart';
 import 'package:mapmybite/notifications_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geocoding/geocoding.dart';
+import 'dart:async';
 
 class TruckPage extends StatefulWidget {
   final bool openOwnerPortalOnStart;
@@ -511,7 +512,9 @@ class _TruckPageState extends State<TruckPage> {
     await _animateToLocation(_defaultUsaPosition, zoom: 9);
   }
   Future<void> _searchCityOrArea(String text) async {
-    final String query = text.trim();
+    final String query = text
+        .trim()
+        .replaceAll(RegExp(r'\boregan\b', caseSensitive: false), 'Oregon');
 
     if (query.isEmpty) return;
 
@@ -1079,15 +1082,24 @@ class _TruckPageState extends State<TruckPage> {
                   });
                 },
                 onSubmitted: (value) {
-                  final text = value.trim().toLowerCase();
+                  final text = value.trim();
 
-                  final looksLikeCity =
+                  if (text.isEmpty) return;
+
+                  final hasVendorMatch = _filteredVendors.isNotEmpty;
+
+                  final looksLikePlace =
                       text.contains(',') ||
-                          text.contains(' ca') ||
-                          text.contains(' california');
+                          text.toLowerCase().contains(' ca') ||
+                          text.toLowerCase().contains(' california') ||
+                          text.toLowerCase().contains(' india') ||
+                          text.toLowerCase().contains(' delhi') ||
+                          text.toLowerCase().contains(' oregon') ||
+                          text.toLowerCase().contains(' usa') ||
+                          text.split(' ').length >= 2;
 
-                  if (looksLikeCity) {
-                    _searchCityOrArea(value);
+                  if (!hasVendorMatch || looksLikePlace) {
+                    _searchCityOrArea(text);
                   }
                 },
               ),

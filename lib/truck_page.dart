@@ -41,6 +41,7 @@ class _TruckPageState extends State<TruckPage> {
   String _searchQuery = '';
   String _selectedCuisine = 'All';
   bool _isListView = false;
+  bool _isDarkMode = false;
   Set<String> _favoriteIds = {};
   bool _showFavoritesOnly = false;
   LatLng? _searchCenterPosition;
@@ -767,6 +768,22 @@ class _TruckPageState extends State<TruckPage> {
     if (gallery.isNotEmpty) return gallery.first;
     return '';
   }
+  static const String _darkMapStyle = '''
+[
+  {
+    "elementType": "geometry",
+    "stylers": [{"color": "#1d2c4d"}]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#8ec3b9"}]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [{"color": "#1a3646"}]
+  }
+]
+''';
 
   Set<Marker> _buildMarkers() {
     final Set<Marker> markers = {};
@@ -1054,7 +1071,7 @@ class _TruckPageState extends State<TruckPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: _isDarkMode ? Colors.grey.shade900 : Colors.white,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
@@ -1066,9 +1083,14 @@ class _TruckPageState extends State<TruckPage> {
               ),
               child: TextField(
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search, color: Colors.deepPurple),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: _isDarkMode ? Colors.orange : Colors.deepPurple,
+                  ),
                   hintText: 'Search food trucks or kitchens',
-                  hintStyle: TextStyle(color: Colors.grey),
+                  hintStyle: TextStyle(
+                    color: _isDarkMode ? Colors.grey.shade400 : Colors.grey,
+                  ),
                   border: InputBorder.none,
                 ),
                 onChanged: (value) {
@@ -1118,6 +1140,12 @@ class _TruckPageState extends State<TruckPage> {
                   return ChoiceChip(
                     label: Text(cuisine),
                     selected: selected,
+                    backgroundColor: _isDarkMode ? Colors.grey.shade800 : null,
+                    selectedColor: _isDarkMode ? Colors.orange : null,
+                    labelStyle: TextStyle(
+                      color: _isDarkMode ? Colors.white : Colors.black,
+                      fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                    ),
                     onSelected: (_) {
                       setState(() {
                         _selectedCuisine = cuisine;
@@ -1135,9 +1163,11 @@ class _TruckPageState extends State<TruckPage> {
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: _showFavoritesOnly
+                      backgroundColor: _isDarkMode
+                          ? Colors.grey.shade800
+                          : (_showFavoritesOnly
                           ? Colors.pink.shade50
-                          : Colors.grey.shade100,
+                          : Colors.grey.shade100),
                       side: BorderSide(
                         color: _showFavoritesOnly
                             ? Colors.pink.shade200
@@ -1166,8 +1196,14 @@ class _TruckPageState extends State<TruckPage> {
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.indigo.shade50,
-                    side: BorderSide(color: Colors.indigo.shade200),
+                    backgroundColor: _isDarkMode
+                        ? Colors.grey.shade800
+                        : Colors.indigo.shade50,
+                    side: BorderSide(
+                      color: _isDarkMode
+                          ? Colors.grey.shade700
+                          : Colors.indigo.shade200,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -1180,9 +1216,12 @@ class _TruckPageState extends State<TruckPage> {
                   onPressed: _showActiveAreas,
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'List',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _isDarkMode ? Colors.white : Colors.black,
+                  ),
                 ),
                 Switch(
                   value: _isListView,
@@ -1193,6 +1232,22 @@ class _TruckPageState extends State<TruckPage> {
                   onChanged: (value) {
                     setState(() {
                       _isListView = value;
+                    });
+                  },
+                ),
+                const SizedBox(width: 8),
+
+                const Icon(Icons.dark_mode, size: 18),
+
+                Switch(
+                  value: _isDarkMode,
+                  activeColor: Colors.white,
+                  activeTrackColor: Colors.orange,
+                  inactiveThumbColor: Colors.white,
+                  inactiveTrackColor: Colors.grey,
+                  onChanged: (value) {
+                    setState(() {
+                      _isDarkMode = value;
                     });
                   },
                 ),
@@ -1301,11 +1356,15 @@ class _TruckPageState extends State<TruckPage> {
         final item = items[index];
 
         return Card(
-          elevation: 4,
-          shadowColor: Colors.black12,
+          elevation: _isDarkMode ? 0 : 4,
+          color: _isDarkMode ? Colors.grey.shade900 : Colors.white,
+          shadowColor: _isDarkMode ? Colors.transparent : Colors.black12,
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
+            side: _isDarkMode
+                ? BorderSide(color: Colors.grey.shade800)
+                : BorderSide.none,
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.all(14),
@@ -1394,7 +1453,9 @@ class _TruckPageState extends State<TruckPage> {
                   _distanceInMilesToVendor(item) == 999999
                       ? 'Distance not available'
                       : '${_distanceInMilesToVendor(item).toStringAsFixed(1)} mi away',
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(
+                    color: _isDarkMode ? Colors.grey.shade400 : Colors.grey,
+                  ),
                 ),
               ],
             ),
@@ -1466,10 +1527,27 @@ class _TruckPageState extends State<TruckPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'MapMyBite',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        backgroundColor: _isDarkMode ? Colors.black : null,
+        foregroundColor: _isDarkMode ? Colors.white : null,
+        iconTheme: IconThemeData(
+          color: _isDarkMode ? Colors.white : null,
+        ),
+        title: ShaderMask(
+          shaderCallback: (bounds) => LinearGradient(
+            colors: _isDarkMode
+                ? [Colors.orange, Colors.deepOrangeAccent]
+                : [Colors.black, Colors.black],
+          ).createShader(bounds),
+          child: const Text(
+            'MapMyBite',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: Colors.white,
+            ),
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -1753,6 +1831,7 @@ class _TruckPageState extends State<TruckPage> {
           _isListView
               ? _buildListView()
               : GoogleMap(
+            style: _isDarkMode ? _darkMapStyle : null,
             initialCameraPosition: CameraPosition(
               target: _initialPosition,
               zoom: 9,

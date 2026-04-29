@@ -1032,8 +1032,8 @@ class _TruckPageState extends State<TruckPage> {
                               '${item['cuisine'] ?? ''}\n'
                                   '${item['timing'] ?? ''}\n'
                                   '${_distanceInMilesToVendor(item) == 999999
-                                  ? 'Distance not available'
-                                  : '${_distanceInMilesToVendor(item).toStringAsFixed(1)} mi away'}',
+                                  ? "Tap location icon to show distance"
+                                  : "${_distanceInMilesToVendor(item).toStringAsFixed(1)} mi away"}',
                             ),
                           ),
                           isThreeLine: true,
@@ -1451,7 +1451,7 @@ class _TruckPageState extends State<TruckPage> {
                 const SizedBox(height: 4),
                 Text(
                   _distanceInMilesToVendor(item) == 999999
-                      ? 'Distance not available'
+                      ? 'Tap location icon to show distance'
                       : '${_distanceInMilesToVendor(item).toStringAsFixed(1)} mi away',
                   style: TextStyle(
                     color: _isDarkMode ? Colors.grey.shade400 : Colors.grey,
@@ -1612,11 +1612,29 @@ class _TruckPageState extends State<TruckPage> {
         ],
       ),
       drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        backgroundColor: _isDarkMode ? Colors.black : Colors.white,
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            iconTheme: IconThemeData(
+              color: _isDarkMode ? Colors.white70 : Colors.black54,
+            ),
+            listTileTheme: ListTileThemeData(
+              iconColor: _isDarkMode ? Colors.white70 : Colors.black54,
+              textColor: _isDarkMode ? Colors.white : Colors.black,
+              subtitleTextStyle: TextStyle(
+                color: _isDarkMode ? Colors.white60 : Colors.black54,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          child: ListView(
+            padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.black),
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: _isDarkMode ? Colors.black : Colors.black,
+              ),
               child: Align(
                 alignment: Alignment.bottomLeft,
                 child: Text(
@@ -1824,6 +1842,7 @@ class _TruckPageState extends State<TruckPage> {
               ),
           ],
         ),
+      ),
       ),
       body: iconsLoaded
           ? Stack(

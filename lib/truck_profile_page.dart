@@ -22,6 +22,7 @@ class TruckProfilePage extends StatefulWidget {
   final Map<String, dynamic> truck;
   final bool isOwner;
   final bool initialIsFavorite;
+  final bool isDarkMode;
   final ValueChanged<bool>? onFavoriteChanged;
 
   const TruckProfilePage({
@@ -29,6 +30,7 @@ class TruckProfilePage extends StatefulWidget {
     required this.truck,
     this.isOwner = false,
     this.initialIsFavorite = false,
+    this.isDarkMode = false,
     this.onFavoriteChanged,
   });
 
@@ -37,6 +39,7 @@ class TruckProfilePage extends StatefulWidget {
 }
 
 class _TruckProfilePageState extends State<TruckProfilePage> {
+  bool get _isDarkMode => widget.isDarkMode;
   bool get isOwner => widget.isOwner;
   bool _isFavorite = false;
   Map<String, int> _selectedMenuCart = {};
@@ -2488,6 +2491,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     final bool hasMapLocation = lat != null && lng != null;
 
     return Scaffold(
+      backgroundColor: _isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
         title: Text(widget.truck['title'] ?? 'Business Profile'),
       ),

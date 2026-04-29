@@ -614,6 +614,7 @@ class _TruckPageState extends State<TruckPage> {
           truck: item,
           isOwner: isOwner,
           initialIsFavorite: _favoriteIds.contains(item['id'].toString()),
+          isDarkMode: _isDarkMode,
           onFavoriteChanged: (isFavorite) {
             setState(() {
               final id = item['id'].toString();

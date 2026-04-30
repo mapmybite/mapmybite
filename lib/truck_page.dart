@@ -1083,17 +1083,28 @@ class _TruckPageState extends State<TruckPage> {
                 ],
               ),
               child: TextField(
-                decoration: InputDecoration(
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: _isDarkMode ? Colors.orange : Colors.deepPurple,
-                  ),
-                  hintText: 'Search food trucks or kitchens',
-                  hintStyle: TextStyle(
-                    color: _isDarkMode ? Colors.grey.shade400 : Colors.grey,
-                  ),
-                  border: InputBorder.none,
-                ),
+      style: TextStyle(
+      color: _isDarkMode ? Colors.white : Colors.black,
+        fontSize: 16,
+      ),
+      cursorColor: Colors.orange,
+      decoration: InputDecoration(
+        prefixIcon: Icon(
+          Icons.search,
+          color: _isDarkMode ? Colors.orange : Colors.deepPurple,
+        ),
+        hintText: 'Search food trucks or kitchens',
+        hintStyle: TextStyle(
+          color: _isDarkMode ? Colors.grey.shade400 : Colors.grey,
+        ),
+        filled: true,
+        fillColor: _isDarkMode ? Colors.grey.shade900 : Colors.grey.shade100,
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide.none,
+        ),
+      ),
                 onChanged: (value) {
                   setState(() {
                     _searchQuery = value;

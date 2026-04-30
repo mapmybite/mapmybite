@@ -40,6 +40,11 @@ class TruckProfilePage extends StatefulWidget {
 
 class _TruckProfilePageState extends State<TruckProfilePage> {
   bool get _isDarkMode => widget.isDarkMode;
+  Color get _pageBg => _isDarkMode ? Colors.black : Colors.white;
+  Color get _cardBg => _isDarkMode ? Colors.grey.shade900 : Colors.white;
+  Color get _primaryText => _isDarkMode ? Colors.white : Colors.black87;
+  Color get _secondaryText => _isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
+  Color get _fieldBg => _isDarkMode ? Colors.grey.shade800 : Colors.white;
   bool get isOwner => widget.isOwner;
   bool _isFavorite = false;
   Map<String, int> _selectedMenuCart = {};
@@ -870,7 +875,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 .toStringAsFixed(2)}',
             style: TextStyle(
               fontSize: compact ? 12.5 : 13.5,
-              color: Colors.grey.shade700,
+              color: _secondaryText,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1702,9 +1707,9 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                     const SizedBox(height: 6),
                     Text(
                       widget.truck['title'] ?? '',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
-                        color: Colors.black87,
+                        color: _primaryText,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -2237,10 +2242,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             isKitchen
             ? 'Choose your preferred pickup date and available time slot.'
                 : 'Choose your preferred pickup date and time.',
-            style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey.shade700,
-            ),
+              style: TextStyle(
+                fontSize: 13,
+                color: _secondaryText,
+              ),
             ),
                       const SizedBox(height: 12),
                       TextField(
@@ -2493,6 +2498,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     return Scaffold(
       backgroundColor: _isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
+        backgroundColor: _isDarkMode ? Colors.black : null,
+        foregroundColor: _isDarkMode ? Colors.white : null,
         title: Text(widget.truck['title'] ?? 'Business Profile'),
       ),
       body: SingleChildScrollView(
@@ -2524,9 +2531,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 children: [
                   Text(
                     widget.truck['title'] ?? '',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
+                      color: _primaryText,
                     ),
                   ),
 
@@ -3042,11 +3050,15 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               ),
             ),
             const SizedBox(height: 24),
-            const Padding(
+             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'Food Photos',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _primaryText,
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -3089,11 +3101,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               ),
             ),
             const SizedBox(height: 24),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'Daily Special',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: _primaryText,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -3249,7 +3264,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             .toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey.shade700,
+                          color: _secondaryText,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

@@ -44,6 +44,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   Color get _cardBg => _isDarkMode ? Colors.grey.shade900 : Colors.white;
   Color get _primaryText => _isDarkMode ? Colors.white : Colors.black87;
   Color get _secondaryText => _isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
+  Color get _mutedText => _isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
   Color get _fieldBg => _isDarkMode ? Colors.grey.shade800 : Colors.white;
   bool get isOwner => widget.isOwner;
   bool _isFavorite = false;
@@ -445,6 +446,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       MaterialPageRoute(
         builder: (_) => MenuPage(
           truck: widget.truck,
+          isDarkMode: _isDarkMode,
           isOwnerView: true,
         ),
       ),
@@ -741,7 +743,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   void _showServiceInfo(String title, String details) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: _isDarkMode ? Colors.grey.shade900 : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -762,10 +764,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               const SizedBox(height: 12),
               Text(
                 details.trim().isEmpty ? 'No details added yet.' : details,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   height: 1.45,
-                  color: Colors.black87,
+                  color: _primaryText,
                 ),
               ),
               const SizedBox(height: 18),
@@ -788,7 +790,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       padding: const EdgeInsets.only(bottom: 10),
       child: RichText(
         text: TextSpan(
-          style: const TextStyle(fontSize: 15, color: Colors.black87),
+          style:  TextStyle(fontSize: 15,color: _primaryText),
           children: [
             TextSpan(
               text: '$label: ',
@@ -1667,7 +1669,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _isDarkMode ? Colors.grey.shade900 : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1724,6 +1726,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                     // Customer Name
                     TextField(
                       controller: customerNameController,
+                      style: TextStyle(color: _primaryText),
                       decoration: InputDecoration(
                         labelText: 'Customer Name',
                         border: OutlineInputBorder(
@@ -1739,6 +1742,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                         Expanded(
                           child: TextField(
                             controller: customerPhoneController,
+                            style: TextStyle(color: _primaryText),
                             keyboardType: TextInputType.phone,
                             decoration: InputDecoration(
                               labelText: 'Phone',
@@ -1752,6 +1756,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                         Expanded(
                           child: TextField(
                             controller: customerIdController,
+                            style: TextStyle(color: _primaryText),
                             decoration: InputDecoration(
                               labelText: 'MMB ID',
                               hintText: 'Optional',
@@ -1826,6 +1831,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: notesController,
+                      style: TextStyle(color: _primaryText),
                       maxLines: 3,
                       decoration: InputDecoration(
                         labelText: 'POS Notes',
@@ -1891,6 +1897,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black87,
+
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
@@ -1944,7 +1951,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _isDarkMode ? Colors.grey.shade900 : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1995,7 +2002,29 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               return selectedTime!.format(context);
             }
 
-            return Padding(
+            return Theme(
+                data: Theme.of(context).copyWith(
+                  inputDecorationTheme: InputDecorationTheme(
+                    filled: true,
+                    fillColor: _isDarkMode ? Colors.grey.shade800 : Colors.white,
+                    labelStyle: TextStyle(color: _secondaryText),
+                    hintStyle: TextStyle(color: _secondaryText),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: _isDarkMode ? Colors.grey.shade600 : Colors.grey,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.orange, width: 2),
+                    ),
+                  ),
+                  textSelectionTheme: TextSelectionThemeData(
+                    cursorColor: _isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+                child: Padding(
                 padding: EdgeInsets.only(
                   left: 16,
                   right: 16,
@@ -2021,13 +2050,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  isKitchen ? 'Schedule Pre-Order' : 'Build Your Order',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                      Text(
+                        isKitchen ? 'Schedule Pre-Order' : 'Build Your Order',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: _primaryText,
+                        ),
+                      ),
                 const SizedBox(height: 6),
                 Text(
                   widget.truck['title'] ?? '',
@@ -2052,6 +2082,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             ],
             TextField(
             controller: nameController,
+              style: TextStyle(color: _primaryText),
             decoration: InputDecoration(
             labelText: 'Your Name',
             border: OutlineInputBorder(
@@ -2062,6 +2093,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             const SizedBox(height: 12),
             TextField(
             controller: phoneController,
+              style: TextStyle(color: _primaryText),
             keyboardType: TextInputType.phone,
             decoration: InputDecoration(
             labelText: 'Phone Number',
@@ -2076,15 +2108,16 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             children: [
             Row(
             children: [
-            const Expanded(
-            child: Text(
-            'What would you like to order?',
-            style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            ),
-            ),
-            ),
+              Expanded(
+                child: Text(
+                  'What would you like to order?',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _primaryText,
+                  ),
+                ),
+              ),
             TextButton.icon(
             onPressed: () async {
             final result = await Navigator.push(
@@ -2093,6 +2126,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             builder: (_) => MenuPage(
             truck: widget.truck,
             isOwnerView: false,
+              isDarkMode: _isDarkMode,
             ),
             ),
             );
@@ -2148,6 +2182,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             const SizedBox(height: 8),
             TextField(
             controller: itemsController,
+              style: TextStyle(color: _primaryText),
             maxLines: 2,
             readOnly: _selectedMenuCart.isNotEmpty,
             decoration: InputDecoration(
@@ -2177,6 +2212,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             const SizedBox(height: 12),
             TextField(
             controller: quantityController,
+              style: TextStyle(color: _primaryText),
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
             labelText: 'Quantity',
@@ -2250,6 +2286,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       const SizedBox(height: 12),
                       TextField(
                         controller: notesController,
+                        style: TextStyle(color: _primaryText),
                         maxLines: 3,
                         decoration: InputDecoration(
                           labelText: 'Notes',
@@ -2273,7 +2310,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                           Expanded(
                             child: RadioListTile<String>(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Pay at Counter'),
+                              title: Text(
+                                'Pay at Counter',
+                                style: TextStyle(color: _primaryText),
+                              ),
                               value: 'pay_later',
                               groupValue: selectedPaymentType,
                               onChanged: (value) {
@@ -2287,7 +2327,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                           Expanded(
                             child: RadioListTile<String>(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Pay Now'),
+                              title: Text(
+                                'Pay Now',
+                                style: TextStyle(color: _primaryText),
+                              ),
                               value: 'pay_now',
                               groupValue: selectedPaymentType,
                               onChanged: (widget.truck['enablePayNow'] ?? true)
@@ -2366,7 +2409,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             ),
             )
             ,
-            );
+                ));
           },
         );
       },
@@ -2452,8 +2495,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: _primaryText,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
@@ -2685,9 +2728,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
+                           Text(
                             "Share",
-                            style: TextStyle(fontSize: 11),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _secondaryText,
+                            ),
                           ),
                         ],
                       ),
@@ -2713,9 +2759,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
+                          Text(
                             "Directions",
-                            style: TextStyle(fontSize: 11),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _secondaryText,
+                            ),
                           ),
                         ],
                       ),
@@ -2739,9 +2788,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
+                          Text(
                             "Save",
-                            style: TextStyle(fontSize: 11),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _secondaryText,
+                            ),
                           ),
                             ],
                           ),
@@ -2759,7 +2811,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                   const Icon(Icons.phone, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text((widget.truck['phone'] ?? '').toString()),
+                    child: Text(
+                      (widget.truck['phone'] ?? '').toString(),
+                      style: TextStyle(
+                        color: _primaryText,
+                      ),
+                    ),
                   ),
                   ElevatedButton.icon(
                     onPressed: () async {
@@ -2801,13 +2858,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 12),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
                       child: Text(
                         'Connect',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: _primaryText,
                         ),
                       ),
                     ),
@@ -3023,7 +3081,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 children: [
                   const Icon(Icons.access_time, size: 18),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(timingText)),
+                  Expanded(
+                    child: Text(
+                      timingText,
+                      style: TextStyle(
+                        color: _secondaryText,
+                      ),
+                    ),
+                  ),
                   if (timingText.contains('-')) ...[
                     const SizedBox(width: 10),
                     Container(
@@ -3096,8 +3161,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                   );
                 },
               )
-                  : const Center(
-                child: Text('No food photos available'),
+                  : Center(
+                child: Text(
+                  'No food photos available',
+                  style: TextStyle(color: _secondaryText),
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -3133,11 +3201,15 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               ),
             ),
             const SizedBox(height: 24),
-            const Padding(
+             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'Menu',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _primaryText,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -3150,7 +3222,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MenuPage(truck: widget.truck),
+                        builder: (_) => MenuPage(
+                          truck: widget.truck,
+                          isDarkMode: _isDarkMode,
+                        )
                       ),
                     );
 
@@ -3282,11 +3357,15 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 ),
               ),
             const SizedBox(height: 8),
-            const Padding(
+             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'About',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _primaryText,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -3294,7 +3373,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 (widget.truck['description'] ?? '').toString(),
-                style: const TextStyle(fontSize: 16, height: 1.4),
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.4,
+                  color: _mutedText,
+                ),
               ),
             ),
             const SizedBox(height: 30),

@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 class MenuPage extends StatefulWidget {
   final Map<String, dynamic> truck;
   final bool isOwnerView;
+  final bool isDarkMode;
 
   const MenuPage({
     super.key,
     required this.truck,
     this.isOwnerView = false,
+    this.isDarkMode = false,
   });
 
   @override
@@ -18,6 +20,12 @@ class MenuPage extends StatefulWidget {
 
 class _MenuPageState extends State<MenuPage> {
   final Map<String, int> cart = {};
+  bool get _isDarkMode => widget.isDarkMode;
+  Color get _pageBg => _isDarkMode ? Colors.black : const Color(0xFFFFF7FC);
+  Color get _cardBg => _isDarkMode ? Colors.grey.shade900 : Colors.white;
+  Color get _primaryText => _isDarkMode ? Colors.white : Colors.black87;
+  Color get _secondaryText => _isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
+  Color get _borderColor => _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
 
   List<Map<String, dynamic>> get menuItems {
     final dynamic rawMenuItems = widget.truck['menuItems'];
@@ -520,7 +528,7 @@ class _MenuPageState extends State<MenuPage> {
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: Colors.grey.shade800,
+          color: _primaryText,
         ),
       ),
     );
@@ -540,7 +548,7 @@ class _MenuPageState extends State<MenuPage> {
         width: 110,
         height: 110,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: _isDarkMode ? Colors.orange.shade900.withOpacity(0.3) : Colors.orange.shade100,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.grey.shade300),
         ),
@@ -616,13 +624,13 @@ class _MenuPageState extends State<MenuPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: _borderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
@@ -665,7 +673,7 @@ class _MenuPageState extends State<MenuPage> {
                       '\$${price.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 15,
-                        color: Colors.grey.shade800,
+                        color: _secondaryText,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -675,7 +683,7 @@ class _MenuPageState extends State<MenuPage> {
                         description,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey.shade700,
+                          color: _secondaryText,
                         ),
                       ),
                     ],
@@ -692,9 +700,11 @@ class _MenuPageState extends State<MenuPage> {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(
+                  color: _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -743,7 +753,7 @@ class _MenuPageState extends State<MenuPage> {
                   qty > 0 ? 'Added: $qty' : 'Tap + to add item',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade700,
+                    color: _secondaryText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -753,7 +763,10 @@ class _MenuPageState extends State<MenuPage> {
                 children: [
                   IconButton(
                     onPressed: () => removeItem(name),
-                    icon: const Icon(Icons.remove_circle),
+                    icon: Icon(
+                      Icons.remove_circle,
+                      color: _isDarkMode ? Colors.orange : Colors.black,
+                    ),
                   ),
                   Text(
                     qty.toString(),
@@ -764,7 +777,10 @@ class _MenuPageState extends State<MenuPage> {
                   ),
                   IconButton(
                     onPressed: () => _showCustomizeItemDialog(item),
-                    icon: const Icon(Icons.add_circle),
+                    icon: Icon(
+                      Icons.add_circle,
+                      color: _isDarkMode ? Colors.orange : Colors.black,
+                    ),
                   ),
                 ],
               ),
@@ -780,7 +796,11 @@ class _MenuPageState extends State<MenuPage> {
     final grouped = groupedMenu;
 
     return Scaffold(
+      backgroundColor: _pageBg,
       appBar: AppBar(
+        backgroundColor: _pageBg,
+        foregroundColor: _primaryText,
+        elevation: 0,
         title: Text(widget.truck['title'] ?? 'Menu'),
       ),
       body: Column(
@@ -792,7 +812,7 @@ class _MenuPageState extends State<MenuPage> {
               'Menu details, item options, and owner-side local photos are ready here.',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey.shade700,
+                color: _secondaryText,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -821,9 +841,10 @@ class _MenuPageState extends State<MenuPage> {
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                       child: Text(
                         category,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 19,
                           fontWeight: FontWeight.bold,
+                          color: _primaryText,
                         ),
                       ),
                     ),
@@ -855,9 +876,10 @@ class _MenuPageState extends State<MenuPage> {
                     ),
                     Text(
                       totalItemsSelected.toString(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
+                        color: _primaryText,
                       ),
                     ),
                   ],

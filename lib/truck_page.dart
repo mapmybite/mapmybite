@@ -612,7 +612,8 @@ class _TruckPageState extends State<TruckPage> {
       MaterialPageRoute(
         builder: (context) => TruckProfilePage(
           truck: item,
-          isOwner: isOwner,
+          isOwner: _ownerBusiness != null &&
+              _ownerBusiness!['id'].toString() == item['id'].toString(),
           initialIsFavorite: _favoriteIds.contains(item['id'].toString()),
           isDarkMode: _isDarkMode,
           onFavoriteChanged: (isFavorite) {
@@ -1820,6 +1821,7 @@ class _TruckPageState extends State<TruckPage> {
                     MaterialPageRoute(
                       builder: (_) => OwnerPortalPage(
                         existingData: _ownerBusiness,
+                        isDarkMode: _isDarkMode,
                       ),
                     ),
                   );
@@ -1884,6 +1886,32 @@ class _TruckPageState extends State<TruckPage> {
             zoomControlsEnabled: true,
           ),
           _buildCustomerSearchPanel(),
+          if (_ownerBusiness != null)
+            Positioned(
+              bottom: 140,
+              right: 16,
+              child: FloatingActionButton(
+                backgroundColor: Colors.orange,
+                onPressed: () async {
+                  final result = await Navigator.push<Map<String, dynamic>>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OwnerPortalPage(
+                        existingData: _ownerBusiness,
+                        isDarkMode: _isDarkMode,
+                      ),
+                    ),
+                  );
+
+                  if (result != null) {
+                    setState(() {
+                      _ownerBusiness = result;
+                    });
+                  }
+                },
+                child: const Icon(Icons.store),
+              ),
+            ),
         ],
       )
           : const Center(

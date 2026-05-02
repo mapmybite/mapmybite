@@ -9,11 +9,13 @@ import 'package:video_player/video_player.dart';
 import 'owner_menu_editor_page.dart';
 
 class OwnerPortalPage extends StatefulWidget {
+  final bool isDarkMode;
   final Map<String, dynamic>? existingData;
 
   const OwnerPortalPage({
     super.key,
     this.existingData,
+    this.isDarkMode = false,
   });
 
   @override
@@ -21,6 +23,13 @@ class OwnerPortalPage extends StatefulWidget {
 }
 
 class _OwnerPortalPageState extends State<OwnerPortalPage> {
+  bool get _isDarkMode => widget.isDarkMode;
+
+  Color get _pageBg => _isDarkMode ? Colors.black : Colors.white;
+  Color get _cardBg => _isDarkMode ? Colors.grey.shade900 : Colors.white;
+  Color get _primaryText => _isDarkMode ? Colors.white : Colors.black87;
+  Color get _secondaryText => _isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
+  Color get _fieldBg => _isDarkMode ? Colors.grey.shade800 : Colors.white;
   String businessType = 'food_truck';
   String selectedPlan = 'free';
   bool enablePayNow = true;

@@ -498,6 +498,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       MaterialPageRoute(
         builder: (_) => OwnerPortalPage(
           existingData: widget.truck,
+          isDarkMode: _isDarkMode,
         ),
       ),
     );

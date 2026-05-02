@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'truck_page.dart';
 import 'app_text.dart';
+import 'customer_home_page.dart';
 
 class RoleSelectionPage extends StatefulWidget {
   const RoleSelectionPage({super.key});
@@ -191,7 +192,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => TruckPage(),
+                          builder: (_) => const CustomerHomePage(),
                         ),
                       );
                     },

@@ -13,6 +13,7 @@ import 'package:mapmybite/notifications_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geocoding/geocoding.dart';
 import 'dart:async';
+import 'favorite_data.dart';
 
 class TruckPage extends StatefulWidget {
   final bool openOwnerPortalOnStart;
@@ -281,7 +282,7 @@ class _TruckPageState extends State<TruckPage> {
           vendor['cuisine'] == _selectedCuisine;
 
       final matchesFavorites =
-          !_showFavoritesOnly || _favoriteIds.contains(id);
+          !_showFavoritesOnly || FavoriteData.isFavorite(vendor);
 
       bool matchesRadius = true;
 
@@ -614,7 +615,7 @@ class _TruckPageState extends State<TruckPage> {
           truck: item,
           isOwner: _ownerBusiness != null &&
               _ownerBusiness!['id'].toString() == item['id'].toString(),
-          initialIsFavorite: _favoriteIds.contains(item['id'].toString()),
+          initialIsFavorite: FavoriteData.isFavorite(item),
           isDarkMode: _isDarkMode,
           onFavoriteChanged: (isFavorite) {
             setState(() {
@@ -1195,7 +1196,7 @@ class _TruckPageState extends State<TruckPage> {
                       color: Colors.pink,
                     ),
                     label: Text(
-                      'Favorites (${_favoriteIds.length})',
+                      'Favorites (${FavoriteData.favorites.value.length})',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     onPressed: () {
@@ -1399,9 +1400,10 @@ class _TruckPageState extends State<TruckPage> {
                 Expanded(
                   child: Text(
                     item['title']?.toString() ?? '',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
+                      color: _isDarkMode ? Colors.white : Colors.black87,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1473,26 +1475,22 @@ class _TruckPageState extends State<TruckPage> {
               ],
             ),
             isThreeLine: true,
-            trailing: IconButton(
-              icon: Icon(
-                _favoriteIds.contains(item['id'].toString())
-                    ? Icons.favorite
-                    : Icons.favorite_border,
-                color: _favoriteIds.contains(item['id'].toString())
-                    ? Colors.red
-                    : Colors.grey,
-              ),
-              onPressed: () {
-                setState(() {
-                  final id = item['id'].toString();
+            trailing: ValueListenableBuilder<List<Map<String, dynamic>>>(
+              valueListenable: FavoriteData.favorites,
+              builder: (context, favorites, _) {
+                final bool isFavorite = FavoriteData.isFavorite(item);
 
-                  if (_favoriteIds.contains(id)) {
-                    _favoriteIds.remove(id);
-                  } else {
-                    _favoriteIds.add(id);
-                  }
-                  _saveFavorites();
-                });
+                return IconButton(
+                  icon: Icon(
+                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorite ? Colors.red : Colors.grey,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      FavoriteData.toggleFavorite(item);
+                    });
+                  },
+                );
               },
             ),
             onTap: () {
@@ -1906,7 +1904,36 @@ class _TruckPageState extends State<TruckPage> {
                   if (result != null) {
                     setState(() {
                       _ownerBusiness = result;
+
+                      final String editedId = (result['id'] ?? '').toString();
+                      final String editedType = (result['type'] ?? '').toString();
+
+                      if (editedId.isNotEmpty) {
+                        if (editedType == 'home_kitchen') {
+                          final int index = homeKitchens.indexWhere(
+                                (kitchen) => (kitchen['id'] ?? '').toString() == editedId,
+                          );
+
+                          if (index != -1) {
+                            homeKitchens[index] = result;
+                          }
+                        } else {
+                          final int index = foodTrucks.indexWhere(
+                                (truck) => (truck['id'] ?? '').toString() == editedId,
+                          );
+
+                          if (index != -1) {
+                            foodTrucks[index] = result;
+                          }
+                        }
+                      }
                     });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('My Business updated successfully'),
+                      ),
+                    );
                   }
                 },
                 child: const Icon(Icons.store),

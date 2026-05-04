@@ -153,6 +153,32 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   bool hasCatering = false;
   bool hasTiffin = false;
   String verificationStatus = 'not_started';
+  final List<String> cuisineSuggestions = [
+    'Mexican Food',
+    'Fast Food',
+    'Indian Food',
+    'Punjabi Food',
+    'Punjabi Home Food',
+    'Indian Vegetarian',
+    'Chinese Food',
+    'Thai Food',
+    'Italian Food',
+    'Pizza',
+    'American Food',
+    'Filipino Food',
+    'Nepali Food',
+    'Pakistani Food',
+    'Bakery',
+    'Cakes & Pastries',
+    'Coffee & Chai',
+    'Desserts',
+    'Vegetarian',
+    'Vegan',
+    'BBQ',
+    'Seafood',
+    'Mediterranean',
+    'Middle Eastern',
+  ];
 
   int get _galleryLimit {
     switch (selectedPlan) {
@@ -1446,10 +1472,59 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
               hintText: nameHint,
               controller: nameController,
             ),
-            _buildTextField(
-              icon: Icons.restaurant,
-              hintText: 'Cuisine Type',
-              controller: cuisineController,
+            Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                final query = textEditingValue.text.toLowerCase().trim();
+
+                if (query.isEmpty) {
+                  return cuisineSuggestions;
+                }
+
+                return cuisineSuggestions.where((cuisine) {
+                  return cuisine.toLowerCase().contains(query);
+                });
+              },
+              onSelected: (String selection) {
+                setState(() {
+                  cuisineController.text = selection;
+                });
+              },
+              fieldViewBuilder: (
+                  context,
+                  textEditingController,
+                  focusNode,
+                  onFieldSubmitted,
+                  ) {
+                if (textEditingController.text != cuisineController.text) {
+                  textEditingController.text = cuisineController.text;
+                  textEditingController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: textEditingController.text.length),
+                  );
+                }
+
+                textEditingController.addListener(() {
+                  cuisineController.text = textEditingController.text;
+                });
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: TextField(
+                    controller: textEditingController,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.restaurant),
+                      hintText: 'Cuisine Type (type or select)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 18,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
             _buildTextField(
               icon: Icons.location_on,

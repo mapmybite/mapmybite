@@ -75,6 +75,14 @@ class _TruckPageState extends State<TruckPage> {
       CameraUpdate.newLatLngBounds(bounds, 80),
     );
   }
+  final List<Map<String, dynamic>> _popularCategories = [
+    {'label': 'Pizza', 'icon': Icons.local_pizza, 'color': Colors.redAccent},
+    {'label': 'Fast Food', 'icon': Icons.fastfood, 'color': Colors.orange},
+    {'label': 'Coffee', 'icon': Icons.local_cafe, 'color': Colors.brown},
+    {'label': 'Desserts', 'icon': Icons.icecream, 'color': Colors.pink},
+    {'label': 'Indian', 'icon': Icons.rice_bowl, 'color': Colors.deepOrange},
+    {'label': 'Chinese', 'icon': Icons.ramen_dining, 'color': Colors.red},
+  ];
   final List<String> _cuisineFilters = [
     'All',
     'Mexican Food',
@@ -83,6 +91,24 @@ class _TruckPageState extends State<TruckPage> {
     'Punjabi Food',
     'Punjabi Home Food',
     'Indian Vegetarian',
+    'Chinese Food',
+    'Thai Food',
+    'Italian Food',
+    'Pizza',
+    'American Food',
+    'Filipino Food',
+    'Nepali Food',
+    'Pakistani Food',
+    'Bakery',
+    'Cakes & Pastries',
+    'Coffee & Chai',
+    'Desserts',
+    'Vegetarian',
+    'Vegan',
+    'BBQ',
+    'Seafood',
+    'Mediterranean',
+    'Middle Eastern',
   ];
 
   static const LatLng _defaultUsaPosition = LatLng(37.9577, -121.2908);
@@ -251,37 +277,83 @@ class _TruckPageState extends State<TruckPage> {
 
 // Apply search + cuisine filter
   List<Map<String, dynamic>> get _filteredVendors {
-    final results = _allVendors.where((vendor) {
-      final id = vendor['id'].toString();
+    String cleanSearchText(String text) {
+      return text
+          .toLowerCase()
+          .replaceAll('-', ' ')
+          .replaceAll('_', ' ')
+          .replaceAll(RegExp(r'\b(food|cuisine|truck|kitchen|restaurant|near|me)\b'), '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+    }
 
-      String cleanSearchText(String text) {
-        return text
-            .toLowerCase()
-            .replaceAll(RegExp(r'\b(food|cuisine|truck|kitchen|restaurant|near|me)\b'), '')
-            .replaceAll(RegExp(r'\s+'), ' ')
-            .trim();
+    final String query = cleanSearchText(_searchQuery);
+
+    final Map<String, List<String>> cuisineAliases = {
+      'chinese': ['chienies', 'chinees', 'china', 'indo chinese', 'asian'],
+      'thai': ['thailand', 'thai food', 'asian'],
+      'indian': ['india', 'desi', 'south indian', 'north indian'],
+      'punjabi': ['panjabi', 'desi', 'indian'],
+      'mexican': ['taco', 'tacos', 'burrito', 'quesadilla'],
+      'italian': ['pizza', 'pasta', 'spaghetti', 'lasagna'],
+      'american': ['burger', 'fries', 'bbq', 'grill', 'hotdog'],
+      'pakistani': ['pakistan', 'desi', 'karahi', 'biryani'],
+      'nepali': ['nepal', 'momo', 'dumpling'],
+      'filipino': ['philippines', 'filipino', 'pinoy'],
+      'bakery': ['cake', 'cakes', 'pastry', 'pastries', 'bread', 'dessert'],
+      'dessert': ['ice cream', 'sweets', 'bakery', 'cake', 'pastry'],
+      'coffee': ['chai', 'cafe', 'tea'],
+      'vegetarian': ['veggie', 'veg', 'plant based'],
+      'fast': ['fast food', 'burger', 'fries', 'wraps'],
+    };
+
+    bool matchesAlias(String text) {
+      if (query.isEmpty) return true;
+
+      for (final entry in cuisineAliases.entries) {
+        final String mainCuisine = entry.key;
+        final List<String> aliases = entry.value;
+
+        if (query.contains(mainCuisine) || mainCuisine.contains(query)) {
+          if (text.contains(mainCuisine)) return true;
+        }
+
+        for (final alias in aliases) {
+          if (query.contains(alias) || alias.contains(query)) {
+            if (text.contains(mainCuisine) || text.contains(alias)) {
+              return true;
+            }
+          }
+        }
       }
 
-      final String query = cleanSearchText(_searchQuery);
+      return false;
+    }
 
+    final results = _allVendors.where((vendor) {
       final String searchableText = cleanSearchText([
         vendor['title'],
         vendor['cuisine'],
         vendor['type'],
         vendor['menu'],
         vendor['description'],
+        vendor['address'],
       ].map((value) => value?.toString() ?? '').join(' '));
 
       final List<String> queryWords =
       query.split(' ').where((word) => word.trim().isNotEmpty).toList();
 
       final bool matchesSearch = queryWords.isEmpty ||
-          queryWords.any((word) => searchableText.contains(word));
+          queryWords.any((word) => searchableText.contains(word)) ||
+          matchesAlias(searchableText);
 
-      final matchesCuisine = _selectedCuisine == 'All' ||
-          vendor['cuisine'] == _selectedCuisine;
+      final bool matchesCuisine = _selectedCuisine == 'All' ||
+          cleanSearchText(vendor['cuisine']?.toString() ?? '')
+              .contains(cleanSearchText(_selectedCuisine)) ||
+          cleanSearchText(_selectedCuisine)
+              .contains(cleanSearchText(vendor['cuisine']?.toString() ?? ''));
 
-      final matchesFavorites =
+      final bool matchesFavorites =
           !_showFavoritesOnly || FavoriteData.isFavorite(vendor);
 
       bool matchesRadius = true;
@@ -303,7 +375,6 @@ class _TruckPageState extends State<TruckPage> {
       return matchesSearch && matchesCuisine && matchesFavorites && matchesRadius;
     }).toList();
 
-    // 🔥 sort by distance
     if (_currentUserPosition != null) {
       results.sort(
             (a, b) => _distanceInMilesToVendor(a)
@@ -1142,6 +1213,65 @@ class _TruckPageState extends State<TruckPage> {
             ),
             const SizedBox(height: 10),
             SizedBox(
+              height: 110,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _popularCategories.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final item = _popularCategories[index];
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _searchQuery = item['label'];
+                        _selectedCuisine = 'All';
+                        _isListView = true;
+                      });
+
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        _fitMapToFilteredResults();
+                      });
+                    },
+                    child: Container(
+                      width: 90,
+                      decoration: BoxDecoration(
+                        color: _isDarkMode ? Colors.grey.shade900 : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            item['icon'],
+                            color: item['color'],
+                            size: 24,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            item['label'],
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(
               height: 42,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
@@ -1364,7 +1494,7 @@ class _TruckPageState extends State<TruckPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 130, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 320, 12, 12),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'favorite_data.dart';
+import 'truck_profile_page.dart';
 
 class CustomerFavoritesPage extends StatelessWidget {
   const CustomerFavoritesPage({super.key});
@@ -39,6 +40,18 @@ class CustomerFavoritesPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TruckProfilePage(
+                          truck: item,
+                          isOwner: false,
+                          initialIsFavorite: true,
+                        ),
+                      ),
+                    );
+                  },
                   leading: const Icon(Icons.store, color: Colors.orange),
                   title: Text(
                     item['title'] ?? '',
@@ -57,7 +70,7 @@ class CustomerFavoritesPage extends StatelessWidget {
                       FavoriteData.removeFavorite(item);
                     },
                   ),
-                ),
+                )
               );
             },
           );

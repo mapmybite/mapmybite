@@ -15,6 +15,7 @@ import 'order_data.dart';
 import 'notification_data.dart';
 import 'local_notification_service.dart';
 import 'orders_page.dart';
+import 'favorite_data.dart';
 
 
 
@@ -54,7 +55,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   @override
   void initState() {
     super.initState();
-    _isFavorite = widget.initialIsFavorite;
+    _isFavorite = FavoriteData.isFavorite(widget.truck);
   }
   Color _planColor(dynamic plan) {
     final p = plan.toString().toLowerCase();
@@ -513,7 +514,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   }
   void _addToFavorite() {
     setState(() {
-      _isFavorite = !_isFavorite;
+      FavoriteData.toggleFavorite(widget.truck);
+      _isFavorite = FavoriteData.isFavorite(widget.truck);
     });
 
     // 🔥 send update back to main page

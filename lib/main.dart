@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'role_selection_page.dart';
 import 'app_text.dart';
+import 'favorite_data.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
@@ -38,6 +39,8 @@ Future<void> main() async {
       AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
   await AppText.loadLanguage();
+
+  await FavoriteData.loadFavorites();
 
   runApp(const MapMyBiteApp());
 }

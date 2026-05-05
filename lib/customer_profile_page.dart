@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 import 'customer_order_history_page.dart';
 import 'customer_favorites_page.dart';
 
-class CustomerProfilePage extends StatelessWidget {
+class CustomerProfilePage extends StatefulWidget {
   const CustomerProfilePage({super.key});
+
+  @override
+  State<CustomerProfilePage> createState() => _CustomerProfilePageState();
+}
+
+class _CustomerProfilePageState extends State<CustomerProfilePage> {
+  final Set<String> _favoriteFoods = {};
 
   void _showLanguagePicker(BuildContext context) {
     showModalBottomSheet(
@@ -36,9 +43,9 @@ class CustomerProfilePage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              _LanguageOption(title: 'English', subtitle: 'Available now'),
-              _LanguageOption(title: 'Spanish', subtitle: 'Coming soon'),
-              _LanguageOption(title: 'Punjabi / Hindi', subtitle: 'Coming soon'),
+              const _LanguageOption(title: 'English', subtitle: 'Available now'),
+              const _LanguageOption(title: 'Spanish', subtitle: 'Coming soon'),
+              const _LanguageOption(title: 'Punjabi / Hindi', subtitle: 'Coming soon'),
             ],
           ),
         );
@@ -46,29 +53,122 @@ class CustomerProfilePage extends StatelessWidget {
     );
   }
 
-  void _showDarkModeInfo(BuildContext context) {
-    showDialog(
+  void _showFavoriteFoodsPicker(BuildContext context) {
+    final foods = [
+      'Mexican Food',
+      'Indian Food',
+      'Punjabi Food',
+      'Fast Food',
+      'Pizza',
+      'Chinese Food',
+      'Thai Food',
+      'Coffee & Chai',
+      'Desserts',
+      'Vegetarian',
+      'Vegan',
+      'BBQ',
+      'Seafood',
+      'Bakery',
+    ];
+
+    showModalBottomSheet(
       context: context,
+      backgroundColor: const Color(0xFF1F1F1F),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1F1F1F),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          title: const Text(
-            'Dark Mode',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: const Text(
-            'Dark mode is already active on this profile. Use the moon toggle on the map screen to switch app theme.',
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, sheetSetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 45,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade600,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Favorite Foods',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Pick foods you like. Later MapMyBite can use this to show better recommendations.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: foods.map((food) {
+                        final selected = _favoriteFoods.contains(food);
+
+                        return ChoiceChip(
+                          label: Text(food),
+                          selected: selected,
+                          selectedColor: Colors.orange,
+                          backgroundColor: Colors.black,
+                          labelStyle: TextStyle(
+                            color: selected ? Colors.white : Colors.white70,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          side: BorderSide(
+                            color: selected ? Colors.orange : Colors.grey.shade700,
+                          ),
+                          onSelected: (_) {
+                            sheetSetState(() {
+                              if (selected) {
+                                _favoriteFoods.remove(food);
+                              } else {
+                                _favoriteFoods.add(food);
+                              }
+                            });
+
+                            setState(() {});
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.check),
+                        label: const Text('Save Preferences'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Favorite foods saved for this session'),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -161,6 +261,18 @@ class CustomerProfilePage extends StatelessWidget {
     );
   }
 
+  String get _favoriteFoodsSubtitle {
+    if (_favoriteFoods.isEmpty) {
+      return 'Choose cuisines you like';
+    }
+
+    if (_favoriteFoods.length <= 2) {
+      return _favoriteFoods.join(', ');
+    }
+
+    return '${_favoriteFoods.take(2).join(', ')} +${_favoriteFoods.length - 2} more';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -219,16 +331,16 @@ class CustomerProfilePage extends StatelessWidget {
             },
           ),
           _ProfileTile(
+            icon: Icons.restaurant_menu,
+            title: 'Favorite Foods',
+            subtitle: _favoriteFoodsSubtitle,
+            onTap: () => _showFavoriteFoodsPicker(context),
+          ),
+          _ProfileTile(
             icon: Icons.language,
             title: 'Language',
             subtitle: 'English now, Spanish and Punjabi/Hindi later',
             onTap: () => _showLanguagePicker(context),
-          ),
-          _ProfileTile(
-            icon: Icons.dark_mode,
-            title: 'Dark Mode',
-            subtitle: 'Theme info and settings',
-            onTap: () => _showDarkModeInfo(context),
           ),
           _ProfileTile(
             icon: Icons.help_outline,

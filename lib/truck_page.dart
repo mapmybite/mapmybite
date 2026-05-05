@@ -44,6 +44,7 @@ class _TruckPageState extends State<TruckPage> {
   String _selectedPopularCategory = '';
   bool _isListView = false;
   bool _isDarkMode = false;
+  bool _isSatelliteView = false;
   Set<String> _favoriteIds = {};
   bool _showFavoritesOnly = false;
   bool _showOpenOnly = false;
@@ -78,6 +79,7 @@ class _TruckPageState extends State<TruckPage> {
     );
   }
   final List<Map<String, dynamic>> _popularCategories = [
+    {'label': 'Mexican', 'icon': Icons.restaurant, 'color': Colors.green},
     {'label': 'Pizza', 'icon': Icons.local_pizza, 'color': Colors.redAccent},
     {'label': 'Fast Food', 'icon': Icons.fastfood, 'color': Colors.orange},
     {'label': 'Coffee', 'icon': Icons.local_cafe, 'color': Colors.brown},
@@ -1233,13 +1235,18 @@ class _TruckPageState extends State<TruckPage> {
                   return GestureDetector(
                     onTap: () {
                       setState(() {
-                        _searchQuery = item['label'];
-                        _selectedPopularCategory = item['label'];
+                        final String label = item['label'].toString();
+
+                        _searchQuery = label;
+                        _selectedPopularCategory = label;
                         _selectedCuisine = 'All';
+                        _showFavoritesOnly = false;
+                        _searchCenterPosition = null;
                         _isListView = true;
                       });
 
                       Future.delayed(const Duration(milliseconds: 300), () {
+                        if (!mounted) return;
                         _fitMapToFilteredResults();
                       });
                     },
@@ -1310,6 +1317,16 @@ class _TruckPageState extends State<TruckPage> {
                     onSelected: (_) {
                       setState(() {
                         _selectedCuisine = cuisine;
+                        _searchQuery = '';
+                        _selectedPopularCategory = '';
+                        _showFavoritesOnly = false;
+                        _searchCenterPosition = null;
+                        _isListView = true;
+                      });
+
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        if (!mounted) return;
+                        _fitMapToFilteredResults();
                       });
                     },
                   );
@@ -1317,87 +1334,102 @@ class _TruckPageState extends State<TruckPage> {
               ),
             ),
             const SizedBox(height: 10),
-
-// Map / List toggle
+            // Map / List toggle
             Row(
               children: [
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: _isDarkMode
-                        ? Colors.grey.shade800
-                        : (_showFavoritesOnly
-                        ? Colors.pink.shade50
-                        : Colors.grey.shade100),
-                    side: BorderSide(
-                      color: _showFavoritesOnly
-                          ? Colors.pink.shade300
-                          : Colors.grey.shade300,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  icon: Icon(
-                    _showFavoritesOnly ? Icons.favorite : Icons.favorite_border,
-                    color: Colors.pink,
-                  ),
-                  label: Text(
-                    'Favorites',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _showFavoritesOnly = !_showFavoritesOnly;
-                      _isListView = true;
-                    });
-                  },
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: _isDarkMode
-                        ? Colors.grey.shade800
-                        : Colors.indigo.shade50,
-                    side: BorderSide(
-                      color: _isDarkMode
-                          ? Colors.grey.shade700
-                          : Colors.indigo.shade200,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _isDarkMode
+                            ? Colors.grey.shade800
+                            : (_showFavoritesOnly
+                            ? Colors.pink.shade50
+                            : Colors.grey.shade100),
+                        side: BorderSide(
+                          color: _showFavoritesOnly
+                              ? Colors.pink.shade300
+                              : Colors.grey.shade300,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      icon: Icon(
+                        _showFavoritesOnly ? Icons.favorite : Icons.favorite_border,
+                        color: Colors.pink,
+                      ),
+                      label: const Text(
+                        'Favorites',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _showFavoritesOnly = !_showFavoritesOnly;
+                          _isListView = true;
+                        });
+                      },
                     ),
                   ),
-                  icon: const Icon(Icons.location_on, color: Colors.indigo),
-                  label: const Text(
-                    'Areas',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: _showActiveAreas,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'List',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: _isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                Switch(
-                  value: _isListView,
-                  activeColor: Colors.white,
-                  activeTrackColor: Colors.orange,
-                  inactiveThumbColor: Colors.white,
-                  inactiveTrackColor: Colors.orange.shade200,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  onChanged: (value) {
-                    setState(() {
-                      _isListView = value;
-                    });
-                  },
-                ),
-                const SizedBox(width: 8),
 
+                Expanded(
+                  child: Center(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _isDarkMode
+                            ? Colors.grey.shade800
+                            : Colors.indigo.shade50,
+                        side: BorderSide(
+                          color: _isDarkMode
+                              ? Colors.grey.shade700
+                              : Colors.indigo.shade200,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      icon: const Icon(Icons.location_on, color: Colors.indigo),
+                      label: const Text(
+                        'Areas',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: _showActiveAreas,
+                    ),
+                  ),
+                ),
 
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'List',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        Switch(
+                          value: _isListView,
+                          activeColor: Colors.white,
+                          activeTrackColor: Colors.orange,
+                          inactiveThumbColor: Colors.white,
+                          inactiveTrackColor: Colors.orange.shade200,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          onChanged: (value) {
+                            setState(() {
+                              _isListView = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
@@ -1678,24 +1710,44 @@ class _TruckPageState extends State<TruckPage> {
         iconTheme: IconThemeData(
           color: _isDarkMode ? Colors.white : null,
         ),
-        leadingWidth: 96,
+        leadingWidth: 150,
         leading: Row(
           children: [
             Builder(
               builder: (context) => IconButton(
-                icon: const Icon(Icons.menu),
+                icon: const Icon(Icons.menu, size: 22),
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
             ),
+            const SizedBox(width: 2),
+
             IconButton(
               tooltip: 'Dark Mode',
               icon: Icon(
                 _isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                size: 20,
                 color: Colors.orange,
               ),
               onPressed: () {
                 setState(() {
                   _isDarkMode = !_isDarkMode;
+                });
+              },
+            ),
+            const SizedBox(width: 2),
+
+            IconButton(
+              tooltip: _isSatelliteView ? 'Normal Map' : 'Satellite View',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(
+                _isSatelliteView ? Icons.map : Icons.satellite_alt,
+                size: 20,
+                color: Colors.greenAccent,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isSatelliteView = !_isSatelliteView;
                 });
               },
             ),
@@ -2029,7 +2081,7 @@ class _TruckPageState extends State<TruckPage> {
               target: _initialPosition,
               zoom: 9,
             ),
-            mapType: MapType.normal,
+            mapType: _isSatelliteView ? MapType.hybrid : MapType.normal,
             onMapCreated: (controller) async {
               mapController = controller;
 

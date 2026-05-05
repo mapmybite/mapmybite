@@ -41,10 +41,12 @@ class _TruckPageState extends State<TruckPage> {
   // Customer page filters
   String _searchQuery = '';
   String _selectedCuisine = 'All';
+  String _selectedPopularCategory = '';
   bool _isListView = false;
   bool _isDarkMode = false;
   Set<String> _favoriteIds = {};
   bool _showFavoritesOnly = false;
+  bool _showOpenOnly = false;
   LatLng? _searchCenterPosition;
   double _searchRadiusMiles = 25;
   Future<void> _fitMapToFilteredResults() async {
@@ -82,6 +84,12 @@ class _TruckPageState extends State<TruckPage> {
     {'label': 'Desserts', 'icon': Icons.icecream, 'color': Colors.pink},
     {'label': 'Indian', 'icon': Icons.rice_bowl, 'color': Colors.deepOrange},
     {'label': 'Chinese', 'icon': Icons.ramen_dining, 'color': Colors.red},
+    {'label': 'Thai', 'icon': Icons.dinner_dining, 'color': Colors.teal},
+    {'label': 'American', 'icon': Icons.lunch_dining, 'color': Colors.indigo},
+    {'label': 'Bakery', 'icon': Icons.bakery_dining, 'color': Colors.purple},
+    {'label': 'BBQ', 'icon': Icons.outdoor_grill, 'color': Colors.deepOrange},
+    {'label': 'Seafood', 'icon': Icons.set_meal, 'color': Colors.blue},
+    {'label': 'Vegan', 'icon': Icons.eco, 'color': Colors.green},
   ];
   final List<String> _cuisineFilters = [
     'All',
@@ -1213,18 +1221,20 @@ class _TruckPageState extends State<TruckPage> {
             ),
             const SizedBox(height: 10),
             SizedBox(
-              height: 110,
+              height: 88,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _popularCategories.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final item = _popularCategories[index];
+                  final bool isSelected = _selectedPopularCategory == item['label'];
 
                   return GestureDetector(
                     onTap: () {
                       setState(() {
                         _searchQuery = item['label'];
+                        _selectedPopularCategory = item['label'];
                         _selectedCuisine = 'All';
                         _isListView = true;
                       });
@@ -1234,10 +1244,16 @@ class _TruckPageState extends State<TruckPage> {
                       });
                     },
                     child: Container(
-                      width: 90,
+                      width: 78,
                       decoration: BoxDecoration(
-                        color: _isDarkMode ? Colors.grey.shade900 : Colors.white,
+                        color: isSelected
+                            ? item['color'].withOpacity(0.15)
+                            : (_isDarkMode ? Colors.grey.shade900 : Colors.white),
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? item['color'] : Colors.transparent,
+                          width: 2,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.1),
@@ -1245,21 +1261,21 @@ class _TruckPageState extends State<TruckPage> {
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             item['icon'],
                             color: item['color'],
-                            size: 24,
+                            size: 22,
                           ),
                           const SizedBox(height: 6),
                           Text(
                             item['label'],
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: _isDarkMode ? Colors.white : Colors.black,
                             ),
@@ -1271,6 +1287,7 @@ class _TruckPageState extends State<TruckPage> {
                 },
               ),
             ),
+            const SizedBox(height: 8),
             SizedBox(
               height: 42,
               child: ListView.separated(
@@ -1304,38 +1321,36 @@ class _TruckPageState extends State<TruckPage> {
 // Map / List toggle
             Row(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: _isDarkMode
-                          ? Colors.grey.shade800
-                          : (_showFavoritesOnly
-                          ? Colors.pink.shade50
-                          : Colors.grey.shade100),
-                      side: BorderSide(
-                        color: _showFavoritesOnly
-                            ? Colors.pink.shade200
-                            : Colors.grey.shade300,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: _isDarkMode
+                        ? Colors.grey.shade800
+                        : (_showFavoritesOnly
+                        ? Colors.pink.shade50
+                        : Colors.grey.shade100),
+                    side: BorderSide(
+                      color: _showFavoritesOnly
+                          ? Colors.pink.shade300
+                          : Colors.grey.shade300,
                     ),
-                    icon: Icon(
-                      _showFavoritesOnly ? Icons.favorite : Icons.favorite_border,
-                      color: Colors.pink,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    label: Text(
-                      'Favorites (${FavoriteData.favorites.value.length})',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _showFavoritesOnly = !_showFavoritesOnly;
-                        _isListView = true;
-                      });
-                    },
                   ),
+                  icon: Icon(
+                    _showFavoritesOnly ? Icons.favorite : Icons.favorite_border,
+                    color: Colors.pink,
+                  ),
+                  label: Text(
+                    'Favorites',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _showFavoritesOnly = !_showFavoritesOnly;
+                      _isListView = true;
+                    });
+                  },
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
@@ -1359,7 +1374,7 @@ class _TruckPageState extends State<TruckPage> {
                   ),
                   onPressed: _showActiveAreas,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 6),
                 Text(
                   'List',
                   style: TextStyle(
@@ -1373,6 +1388,7 @@ class _TruckPageState extends State<TruckPage> {
                   activeTrackColor: Colors.orange,
                   inactiveThumbColor: Colors.white,
                   inactiveTrackColor: Colors.orange.shade200,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   onChanged: (value) {
                     setState(() {
                       _isListView = value;
@@ -1381,20 +1397,7 @@ class _TruckPageState extends State<TruckPage> {
                 ),
                 const SizedBox(width: 8),
 
-                const Icon(Icons.dark_mode, size: 18),
 
-                Switch(
-                  value: _isDarkMode,
-                  activeColor: Colors.white,
-                  activeTrackColor: Colors.orange,
-                  inactiveThumbColor: Colors.white,
-                  inactiveTrackColor: Colors.grey,
-                  onChanged: (value) {
-                    setState(() {
-                      _isDarkMode = value;
-                    });
-                  },
-                ),
               ],
             ),
           ],
@@ -1494,7 +1497,7 @@ class _TruckPageState extends State<TruckPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 320, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 300, 12, 12),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
@@ -1670,16 +1673,37 @@ class _TruckPageState extends State<TruckPage> {
     return Scaffold(
       backgroundColor: _isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
-        backgroundColor: _isDarkMode ? Colors.black : null,
-        foregroundColor: _isDarkMode ? Colors.white : null,
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
         iconTheme: IconThemeData(
           color: _isDarkMode ? Colors.white : null,
         ),
+        leadingWidth: 96,
+        leading: Row(
+          children: [
+            Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Dark Mode',
+              icon: Icon(
+                _isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                color: Colors.orange,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isDarkMode = !_isDarkMode;
+                });
+              },
+            ),
+          ],
+        ),
         title: ShaderMask(
           shaderCallback: (bounds) => LinearGradient(
-            colors: _isDarkMode
-                ? [Colors.orange, Colors.deepOrangeAccent]
-                : [Colors.black, Colors.black],
+            colors: [Colors.orange, Colors.deepOrangeAccent],
           ).createShader(bounds),
           child: const Text(
             'MapMyBite',
@@ -1693,13 +1717,21 @@ class _TruckPageState extends State<TruckPage> {
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'My Orders',
-            icon: const Icon(Icons.receipt_long),
-            onPressed: _openCustomerOrderHistory,
+            tooltip: _showOpenOnly ? 'Show All Vendors' : 'Open Now',
+            icon: Icon(
+              _showOpenOnly ? Icons.check_circle : Icons.schedule,
+              color: _showOpenOnly ? Colors.greenAccent : Colors.green,
+            ),
+            onPressed: () {
+              setState(() {
+                _showOpenOnly = !_showOpenOnly;
+                _isListView = true;
+              });
+            },
           ),
           IconButton(
             tooltip: 'My Location',
-            icon: const Icon(Icons.my_location),
+            icon: const Icon(Icons.my_location, color: Colors.blue),
             onPressed: _centerOnUserLocation,
           ),
           ValueListenableBuilder<List<Map<String, String>>>(
@@ -1709,7 +1741,7 @@ class _TruckPageState extends State<TruckPage> {
                 children: [
                   IconButton(
                     tooltip: 'Notifications',
-                    icon: const Icon(Icons.notifications_none),
+                    icon: const Icon(Icons.notifications_none, color: Colors.amber),
                     onPressed: () {
                       Navigator.push(
                         context,

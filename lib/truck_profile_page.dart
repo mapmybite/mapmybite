@@ -2553,11 +2553,28 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             imagePath.isNotEmpty
-                ? _buildImage(
-              imagePath,
-              height: 240,
-              width: double.infinity,
-              fit: BoxFit.cover,
+                ? ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: _buildImage(
+                  imagePath,
+                  height: 240,
+                  width: double.infinity,
+                  fit: BoxFit.contain,
+                ),
+              ),
             )
                 : Container(
               height: 240,

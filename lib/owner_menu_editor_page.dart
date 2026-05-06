@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,6 +22,32 @@ class OwnerMenuEditorPage extends StatefulWidget {
 class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
   late List<Map<String, dynamic>> menuItems;
   final ImagePicker _picker = ImagePicker();
+  Future<File> _compressPickedMenuImage(
+      XFile picked, {
+        int quality = 68,
+        int minWidth = 1200,
+        int minHeight = 1200,
+      }) async {
+    final Directory appDir = await getApplicationDocumentsDirectory();
+
+    final String targetPath =
+        '${appDir.path}/mapmybite_menu_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+    final XFile? compressed = await FlutterImageCompress.compressAndGetFile(
+      picked.path,
+      targetPath,
+      quality: quality,
+      minWidth: minWidth,
+      minHeight: minHeight,
+      format: CompressFormat.jpeg,
+    );
+
+    if (compressed == null) {
+      return File(picked.path);
+    }
+
+    return File(compressed.path);
+  }
 
   final List<String> categories = const [
     'Main Items',
@@ -214,13 +242,20 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
   Future<void> _pickLocalMenuImage(int index) async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 75,
+      imageQuality: 85,
     );
 
     if (pickedFile == null) return;
 
+    final File compressedFile = await _compressPickedMenuImage(
+      pickedFile,
+      quality: 68,
+      minWidth: 1200,
+      minHeight: 1200,
+    );
+
     setState(() {
-      menuItems[index]['localImagePath'] = pickedFile.path;
+      menuItems[index]['localImagePath'] = compressedFile.path;
     });
   }
 
@@ -242,13 +277,20 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
 
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 75,
+      imageQuality: 85,
     );
 
     if (pickedFile == null) return;
 
+    final File compressedFile = await _compressPickedMenuImage(
+      pickedFile,
+      quality: 68,
+      minWidth: 1200,
+      minHeight: 1200,
+    );
+
     setState(() {
-      menuItems[index]['customerImagePath'] = pickedFile.path;
+      menuItems[index]['customerImagePath'] = compressedFile.path;
       menuItems[index]['customerCanSeeImage'] = true;
       menuItems[index]['imageUrl'] = '';
     });
@@ -736,7 +778,7 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
         border: Border.all(color: Colors.grey.shade300),
         image: DecorationImage(
           image: FileImage(File(path)),
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
         ),
       ),
     );

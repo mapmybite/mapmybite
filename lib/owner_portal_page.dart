@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
@@ -139,6 +141,32 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   TextEditingController();
 
   final ImagePicker _picker = ImagePicker();
+  Future<File> _compressPickedImage(
+      XFile picked, {
+        int quality = 70,
+        int minWidth = 1200,
+        int minHeight = 1200,
+      }) async {
+    final Directory appDir = await getApplicationDocumentsDirectory();
+
+    final String targetPath =
+        '${appDir.path}/mapmybite_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+    final XFile? compressed = await FlutterImageCompress.compressAndGetFile(
+      picked.path,
+      targetPath,
+      quality: quality,
+      minWidth: minWidth,
+      minHeight: minHeight,
+      format: CompressFormat.jpeg,
+    );
+
+    if (compressed == null) {
+      return File(picked.path);
+    }
+
+    return File(compressed.path);
+  }
 
   File? bannerImage;
   File? idFrontImage;
@@ -266,12 +294,19 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   Future<void> pickBannerImage() async {
     final XFile? picked = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 80,
+      imageQuality: 85,
     );
 
     if (picked != null) {
+      final File compressedFile = await _compressPickedImage(
+        picked,
+        quality: 72,
+        minWidth: 1600,
+        minHeight: 900,
+      );
+
       setState(() {
-        bannerImage = File(picked.path);
+        bannerImage = compressedFile;
       });
     }
   }
@@ -302,11 +337,22 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
 
     if (pickedFiles.isEmpty) return;
 
-    setState(() {
-      final List<File> newFiles =
-      pickedFiles.map((file) => File(file.path)).toList();
+    final List<File> newFiles = [];
 
-      galleryImages = [...galleryImages, ...newFiles].take(galleryLimit).toList();
+    for (final picked in pickedFiles) {
+      final File compressedFile = await _compressPickedImage(
+        picked,
+        quality: 68,
+        minWidth: 1200,
+        minHeight: 1200,
+      );
+
+      newFiles.add(compressedFile);
+    }
+
+    setState(() {
+      galleryImages =
+          [...galleryImages, ...newFiles].take(galleryLimit).toList();
     });
 
     if (galleryImages.length >= galleryLimit) {

@@ -44,6 +44,7 @@ class _MenuPageState extends State<MenuPage> {
             'removableOptions': _toStringList(item['removableOptions']),
             'addOnOptions': _toAddOnList(item['addOnOptions']),
             'localImagePath': (item['localImagePath'] ?? '').toString(),
+            'customerImagePath': (item['customerImagePath'] ?? '').toString(),
             'imageUrl': (item['imageUrl'] ?? '').toString(),
             'isAvailable': item['isAvailable'] is bool
                 ? item['isAvailable']
@@ -533,75 +534,112 @@ class _MenuPageState extends State<MenuPage> {
       ),
     );
   }
-
+  void _openFullScreenImage(String path, {bool isNetwork = false}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: isNetwork
+                  ? Image.network(path, fit: BoxFit.contain)
+                  : Image.file(File(path), fit: BoxFit.contain),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
   Widget _buildImageArea(Map<String, dynamic> item) {
     final String localImagePath = item['localImagePath'].toString().trim();
+    final String customerImagePath =
+    (item['customerImagePath'] ?? '').toString().trim();
     final String imageUrl = item['imageUrl'].toString().trim();
     final bool customerCanSeeImage = item['customerCanSeeImage'] == true;
 
-    final bool hasLocalImage =
-        localImagePath.isNotEmpty && File(localImagePath).existsSync();
+    final String displayPath = widget.isOwnerView
+        ? localImagePath
+        : (customerCanSeeImage && customerImagePath.isNotEmpty
+        ? customerImagePath
+        : localImagePath);
+
+    final bool hasFileImage =
+        displayPath.isNotEmpty && File(displayPath).existsSync();
     final bool hasCloudImage = customerCanSeeImage && imageUrl.isNotEmpty;
 
-    if (!hasLocalImage && !hasCloudImage) {
+    if (!hasFileImage && !hasCloudImage) {
       return Container(
         width: 110,
         height: 110,
         decoration: BoxDecoration(
-          color: _isDarkMode ? Colors.orange.shade900.withOpacity(0.3) : Colors.orange.shade100,
+          color: _isDarkMode
+              ? Colors.orange.shade900.withOpacity(0.3)
+              : Colors.orange.shade100,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.grey.shade300),
         ),
-        child: const Icon(
-          Icons.restaurant_menu,
-          size: 34,
-        ),
+        child: const Icon(Icons.restaurant_menu, size: 34),
       );
     }
 
-    if (hasLocalImage) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Image.file(
-          File(localImagePath),
+    if (hasFileImage) {
+      return GestureDetector(
+        onTap: () => _openFullScreenImage(displayPath),
+        child: Container(
           width: 110,
           height: 110,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) {
-            return Container(
+          decoration: BoxDecoration(
+            color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.file(
+              File(displayPath),
               width: 110,
               height: 110,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: const Icon(Icons.broken_image_outlined),
-            );
-          },
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return const Center(
+                  child: Icon(Icons.broken_image_outlined),
+                );
+              },
+            ),
+          ),
         ),
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Image.network(
-        imageUrl,
+    return GestureDetector(
+      onTap: () => _openFullScreenImage(imageUrl, isNetwork: true),
+      child: Container(
         width: 110,
         height: 110,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) {
-          return Container(
+        decoration: BoxDecoration(
+          color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.network(
+            imageUrl,
             width: 110,
             height: 110,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: const Icon(Icons.broken_image_outlined),
-          );
-        },
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) {
+              return const Center(
+                child: Icon(Icons.broken_image_outlined),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

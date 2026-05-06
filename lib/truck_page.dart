@@ -365,6 +365,8 @@ class _TruckPageState extends State<TruckPage> {
 
       final bool matchesFavorites =
           !_showFavoritesOnly || FavoriteData.isFavorite(vendor);
+      final bool matchesOpenNow =
+          !_showOpenOnly || _isOpenNow(vendor['timing']?.toString() ?? '');
 
       bool matchesRadius = true;
 
@@ -382,7 +384,11 @@ class _TruckPageState extends State<TruckPage> {
         matchesRadius = miles <= _searchRadiusMiles;
       }
 
-      return matchesSearch && matchesCuisine && matchesFavorites && matchesRadius;
+      return matchesSearch &&
+          matchesCuisine &&
+          matchesFavorites &&
+          matchesOpenNow &&
+          matchesRadius;
     }).toList();
 
     if (_currentUserPosition != null) {
@@ -1681,7 +1687,17 @@ class _TruckPageState extends State<TruckPage> {
     return meters / 1609.34;
   }
   Future<void> _goToMapHome() async {
-    Navigator.pop(context);
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+
+    setState(() {
+      _isListView = false;
+      _showFavoritesOnly = false;
+      _searchQuery = '';
+      _selectedCuisine = 'All';
+      _selectedPopularCategory = '';
+    });
 
     if (_currentUserPosition != null) {
       await _animateToLocation(_currentUserPosition!, zoom: 13);

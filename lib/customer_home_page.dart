@@ -13,9 +13,10 @@ class CustomerHomePage extends StatefulWidget {
 
 class _CustomerHomePageState extends State<CustomerHomePage> {
   int _selectedIndex = 0;
+  int _mapRefreshKey = 0;
 
-  late final List<Widget> _pages = [
-    const TruckPage(),
+  List<Widget> get _pages => [
+    TruckPage(key: ValueKey(_mapRefreshKey)),
     const _RewardsPlaceholderPage(),
     const CustomerOrderHistoryPage(),
     const CustomerProfilePage(),
@@ -37,6 +38,10 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
         onTap: (index) {
           setState(() {
+            if (index == 0) {
+              _mapRefreshKey++;
+            }
+
             _selectedIndex = index;
           });
         },

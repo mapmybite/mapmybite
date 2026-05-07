@@ -22,7 +22,7 @@ class _MenuPageState extends State<MenuPage> {
   final Map<String, int> cart = {};
   bool get _isDarkMode => widget.isDarkMode;
   Color get _pageBg => _isDarkMode ? Colors.black : const Color(0xFFFFF7FC);
-  Color get _cardBg => _isDarkMode ? Colors.grey.shade900 : Colors.white;
+  Color get _cardBg => _isDarkMode ? const Color(0xFF1F1F1F) : Colors.white;
   Color get _primaryText => _isDarkMode ? Colors.white : Colors.black87;
   Color get _secondaryText => _isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
   Color get _borderColor => _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
@@ -701,9 +701,10 @@ class _MenuPageState extends State<MenuPage> {
                       const SizedBox(height: 6),
                     Text(
                       name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
+                        color: _primaryText,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -808,9 +809,10 @@ class _MenuPageState extends State<MenuPage> {
                   ),
                   Text(
                     qty.toString(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: _primaryText,
                     ),
                   ),
                   IconButton(

@@ -40,6 +40,10 @@ class TruckProfilePage extends StatefulWidget {
 }
 
 class _TruckProfilePageState extends State<TruckProfilePage> {
+  final TextEditingController _cashReceivedController = TextEditingController();
+
+  double _cashReceived = 0.0;
+
   bool get _isDarkMode => widget.isDarkMode;
   Color get _pageBg => _isDarkMode ? Colors.black : Colors.white;
   Color get _cardBg => _isDarkMode ? Colors.grey.shade900 : Colors.white;
@@ -51,6 +55,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   bool _isFavorite = false;
   Map<String, int> _selectedMenuCart = {};
   double _selectedMenuTotal = 0.0;
+
+  double get _changeDue => _cashReceived - _selectedMenuTotal;
+
+
   List<Map<String, dynamic>> _selectedOrderItems = [];
   @override
   void initState() {
@@ -1655,6 +1663,100 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
       const SnackBar(content: Text('You are checked in. Owner can see you now.')),
     );
   }
+  Widget _buildCashChangeCalculator({
+    required void Function(void Function()) setModalState,
+  }) {
+    final bool hasCashEntered = _cashReceived > 0;
+    final bool enoughCash = _cashReceived >= _selectedMenuTotal;
+    final double difference = _cashReceived - _selectedMenuTotal;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _isDarkMode ? Colors.grey.shade800 : Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _isDarkMode ? Colors.orange.shade700 : Colors.orange.shade200,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Cash Calculator',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: _primaryText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Order Total: \$${_selectedMenuTotal.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: _primaryText,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _cashReceivedController,
+            style: TextStyle(color: _primaryText),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Customer Paid',
+              prefixText: '\$ ',
+              filled: true,
+              fillColor: _fieldBg,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onChanged: (value) {
+              setModalState(() {
+                _cashReceived = double.tryParse(value) ?? 0.0;
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [20, 50, 100].map((amount) {
+              return OutlinedButton(
+                onPressed: () {
+                  setModalState(() {
+                    _cashReceived = amount.toDouble();
+                    _cashReceivedController.text = amount.toStringAsFixed(2);
+                  });
+                },
+                child: Text('\$$amount'),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            !hasCashEntered
+                ? 'Enter cash received'
+                : enoughCash
+                ? 'Change Due: \$${difference.toStringAsFixed(2)}'
+                : 'Remaining: \$${difference.abs().toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: !hasCashEntered
+                  ? _mutedText
+                  : enoughCash
+                  ? Colors.green
+                  : Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   void _showPosCheckoutBottomSheet() {
     if (_selectedMenuCart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1832,6 +1934,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    if (selectedPaymentMethod == 'cash')
+                      _buildCashChangeCalculator(
+                        setModalState: setModalState,
+                      ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: notesController,
                       style: TextStyle(color: _primaryText),
@@ -1871,6 +1978,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             'paymentMethod': selectedPaymentMethod,
                             'paymentStatus': 'Paid',
                             'total': _selectedMenuTotal.toStringAsFixed(2),
+                            'cashReceived': selectedPaymentMethod == 'cash'
+                                ? _cashReceived.toStringAsFixed(2)
+                                : '',
+                            'changeDue': selectedPaymentMethod == 'cash'
+                                ? _changeDue.toStringAsFixed(2)
+                                : '',
                             'cashApp': widget.truck['cashApp'] ?? '',
                             'zelle': widget.truck['zelle'] ?? '',
                             'venmo': widget.truck['venmo'] ?? '',
@@ -1886,6 +1999,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             _selectedMenuCart = {};
                             _selectedOrderItems = [];
                             _selectedMenuTotal = 0.0;
+                            _cashReceived = 0.0;
+                            _cashReceivedController.clear();
                           });
 
                           ScaffoldMessenger.of(context).showSnackBar(

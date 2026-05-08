@@ -1540,6 +1540,21 @@ class _OrdersPageState extends State<OrdersPage> {
                             '\$$total',
                             valueWeight: FontWeight.bold,
                           ),
+                        if ((order['cashReceived'] ?? '').toString().trim().isNotEmpty)
+                          _infoLine(
+                            'Cash Received',
+                            '\$${order['cashReceived']}',
+                            valueColor: Colors.green,
+                            valueWeight: FontWeight.w600,
+                          ),
+
+                        if ((order['changeDue'] ?? '').toString().trim().isNotEmpty)
+                          _infoLine(
+                            'Change Due',
+                            '\$${order['changeDue']}',
+                            valueColor: Colors.orange,
+                            valueWeight: FontWeight.w600,
+                          ),
                         if (transactionComplete)
                           _infoLine(
                             'Transaction',

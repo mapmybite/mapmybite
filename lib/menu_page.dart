@@ -20,12 +20,15 @@ class MenuPage extends StatefulWidget {
 
 class _MenuPageState extends State<MenuPage> {
   final Map<String, int> cart = {};
+
   bool get _isDarkMode => widget.isDarkMode;
   Color get _pageBg => _isDarkMode ? Colors.black : const Color(0xFFFFF7FC);
   Color get _cardBg => _isDarkMode ? const Color(0xFF1F1F1F) : Colors.white;
   Color get _primaryText => _isDarkMode ? Colors.white : Colors.black87;
-  Color get _secondaryText => _isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
-  Color get _borderColor => _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
+  Color get _secondaryText =>
+      _isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
+  Color get _borderColor =>
+      _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
 
   List<Map<String, dynamic>> get menuItems {
     final dynamic rawMenuItems = widget.truck['menuItems'];
@@ -44,14 +47,13 @@ class _MenuPageState extends State<MenuPage> {
             'removableOptions': _toStringList(item['removableOptions']),
             'addOnOptions': _toAddOnList(item['addOnOptions']),
             'localImagePath': (item['localImagePath'] ?? '').toString(),
-            'customerImagePath': (item['customerImagePath'] ?? '').toString(),
+            'customerImagePath':
+            (item['customerImagePath'] ?? '').toString(),
             'imageUrl': (item['imageUrl'] ?? '').toString(),
-            'isAvailable': item['isAvailable'] is bool
-                ? item['isAvailable']
-                : true,
-            'isFeatured': item['isFeatured'] is bool
-                ? item['isFeatured']
-                : false,
+            'isAvailable':
+            item['isAvailable'] is bool ? item['isAvailable'] : true,
+            'isFeatured':
+            item['isFeatured'] is bool ? item['isFeatured'] : false,
             'subscriptionPlan':
             (item['subscriptionPlan'] ?? 'free').toString(),
             'customerCanSeeImage': item['customerCanSeeImage'] is bool
@@ -73,6 +75,7 @@ class _MenuPageState extends State<MenuPage> {
           'removableOptions': <String>[],
           'addOnOptions': <Map<String, dynamic>>[],
           'localImagePath': '',
+          'customerImagePath': '',
           'imageUrl': '',
           'isAvailable': true,
           'isFeatured': false,
@@ -98,6 +101,7 @@ class _MenuPageState extends State<MenuPage> {
           {'name': 'Extra Cheese', 'price': 1.0},
         ],
         'localImagePath': '',
+        'customerImagePath': '',
         'imageUrl': '',
         'isAvailable': true,
         'isFeatured': false,
@@ -115,6 +119,7 @@ class _MenuPageState extends State<MenuPage> {
         'removableOptions': <String>[],
         'addOnOptions': <Map<String, dynamic>>[],
         'localImagePath': '',
+        'customerImagePath': '',
         'imageUrl': '',
         'isAvailable': true,
         'isFeatured': false,
@@ -151,6 +156,23 @@ class _MenuPageState extends State<MenuPage> {
     }
     return <Map<String, dynamic>>[];
   }
+
+  int _ownerGridColumnCount(BuildContext context) {
+    if (!widget.isOwnerView) return 1;
+
+    final media = MediaQuery.of(context);
+    final bool isLandscape = media.orientation == Orientation.landscape;
+    final double width = media.size.width;
+
+    if (!isLandscape) return 1;
+    if (width >= 900) return 3;
+    return 2;
+  }
+
+  bool _useOwnerCompactCards(BuildContext context) {
+    return widget.isOwnerView && _ownerGridColumnCount(context) > 1;
+  }
+
   double _calculateCustomItemTotal(
       double basePrice,
       List<Map<String, dynamic>> selectedAddOns,
@@ -197,6 +219,7 @@ class _MenuPageState extends State<MenuPage> {
 
     return parts.join(' • ');
   }
+
   Future<void> _showCustomizeItemDialog(Map<String, dynamic> item) async {
     final String itemName = item['name'].toString();
     final double basePrice = item['price'] as double;
@@ -230,17 +253,13 @@ class _MenuPageState extends State<MenuPage> {
                   children: [
                     Text(
                       'Base price: \$${basePrice.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     if (removableOptions.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       const Text(
                         'Remove items',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       ...removableOptions.map((option) {
@@ -265,9 +284,7 @@ class _MenuPageState extends State<MenuPage> {
                       const SizedBox(height: 16),
                       const Text(
                         'Add-ons',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       ...addOns.map((addOn) {
@@ -294,7 +311,8 @@ class _MenuPageState extends State<MenuPage> {
                                 });
                               } else {
                                 selectedAddOns.removeWhere(
-                                      (selected) => selected['name'] == addOnName,
+                                      (selected) =>
+                                  selected['name'] == addOnName,
                                 );
                               }
                             });
@@ -403,6 +421,7 @@ class _MenuPageState extends State<MenuPage> {
       },
     );
   }
+
   void addItem(String name) {
     setState(() {
       cart[name] = (cart[name] ?? 0) + 1;
@@ -410,15 +429,30 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   void removeItem(String name) {
-    if (!cart.containsKey(name)) return;
+    final String? keyToRemove = cart.keys.cast<String?>().firstWhere(
+          (key) => key != null && key.split('__').first == name,
+      orElse: () => null,
+    );
+
+    if (keyToRemove == null) return;
 
     setState(() {
-      if (cart[name]! > 1) {
-        cart[name] = cart[name]! - 1;
+      if (cart[keyToRemove]! > 1) {
+        cart[keyToRemove] = cart[keyToRemove]! - 1;
       } else {
-        cart.remove(name);
+        cart.remove(keyToRemove);
       }
     });
+  }
+
+  int _quantityForItem(String name) {
+    int qty = 0;
+    for (final entry in cart.entries) {
+      if (entry.key.split('__').first == name) {
+        qty += entry.value;
+      }
+    }
+    return qty;
   }
 
   double get total {
@@ -454,7 +488,8 @@ class _MenuPageState extends State<MenuPage> {
               final addOnParts = e.split('|');
               return {
                 'name': addOnParts.isNotEmpty ? addOnParts[0] : '',
-                'price': addOnParts.length > 1 ? _toDouble(addOnParts[1]) : 0.0,
+                'price':
+                addOnParts.length > 1 ? _toDouble(addOnParts[1]) : 0.0,
               };
             }).toList();
           }
@@ -493,27 +528,33 @@ class _MenuPageState extends State<MenuPage> {
     return count;
   }
 
-  Widget _buildChip(String text, {IconData? icon}) {
+  Widget _buildChip(String text, {IconData? icon, bool compact = false}) {
     return Container(
       margin: const EdgeInsets.only(right: 6, bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 10,
+        vertical: compact ? 5 : 7,
+      ),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(
+          color: _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14),
+            Icon(icon, size: compact ? 12 : 14, color: _primaryText),
             const SizedBox(width: 5),
           ],
           Text(
             text,
-            style: const TextStyle(
-              fontSize: 12,
+            style: TextStyle(
+              fontSize: compact ? 11 : 12,
               fontWeight: FontWeight.w600,
+              color: _primaryText,
             ),
           ),
         ],
@@ -521,19 +562,20 @@ class _MenuPageState extends State<MenuPage> {
     );
   }
 
-  Widget _buildSectionLabel(String text) {
+  Widget _buildSectionLabel(String text, {bool compact = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 13,
+          fontSize: compact ? 12 : 13,
           fontWeight: FontWeight.w700,
           color: _primaryText,
         ),
       ),
     );
   }
+
   void _openFullScreenImage(String path, {bool isNetwork = false}) {
     Navigator.push(
       context,
@@ -555,7 +597,11 @@ class _MenuPageState extends State<MenuPage> {
       ),
     );
   }
-  Widget _buildImageArea(Map<String, dynamic> item) {
+
+  Widget _buildImageArea(
+      Map<String, dynamic> item, {
+        bool compact = false,
+      }) {
     final String localImagePath = item['localImagePath'].toString().trim();
     final String customerImagePath =
     (item['customerImagePath'] ?? '').toString().trim();
@@ -568,22 +614,24 @@ class _MenuPageState extends State<MenuPage> {
         ? customerImagePath
         : localImagePath);
 
+    final double imageSize = compact ? 78 : 110;
+
     final bool hasFileImage =
         displayPath.isNotEmpty && File(displayPath).existsSync();
     final bool hasCloudImage = customerCanSeeImage && imageUrl.isNotEmpty;
 
     if (!hasFileImage && !hasCloudImage) {
       return Container(
-        width: 110,
-        height: 110,
+        width: imageSize,
+        height: imageSize,
         decoration: BoxDecoration(
           color: _isDarkMode
               ? Colors.orange.shade900.withOpacity(0.3)
               : Colors.orange.shade100,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: _borderColor),
         ),
-        child: const Icon(Icons.restaurant_menu, size: 34),
+        child: Icon(Icons.restaurant_menu, size: compact ? 28 : 34),
       );
     }
 
@@ -591,19 +639,19 @@ class _MenuPageState extends State<MenuPage> {
       return GestureDetector(
         onTap: () => _openFullScreenImage(displayPath),
         child: Container(
-          width: 110,
-          height: 110,
+          width: imageSize,
+          height: imageSize,
           decoration: BoxDecoration(
             color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: _borderColor),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: Image.file(
               File(displayPath),
-              width: 110,
-              height: 110,
+              width: imageSize,
+              height: imageSize,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) {
                 return const Center(
@@ -619,19 +667,19 @@ class _MenuPageState extends State<MenuPage> {
     return GestureDetector(
       onTap: () => _openFullScreenImage(imageUrl, isNetwork: true),
       child: Container(
-        width: 110,
-        height: 110,
+        width: imageSize,
+        height: imageSize,
         decoration: BoxDecoration(
           color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: _borderColor),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(14),
           child: Image.network(
             imageUrl,
-            width: 110,
-            height: 110,
+            width: imageSize,
+            height: imageSize,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) {
               return const Center(
@@ -644,10 +692,13 @@ class _MenuPageState extends State<MenuPage> {
     );
   }
 
-  Widget _buildItemCard(Map<String, dynamic> item) {
+  Widget _buildItemCard(
+      Map<String, dynamic> item, {
+        bool compact = false,
+      }) {
     final String name = item['name'].toString();
     final double price = item['price'] as double;
-    final int qty = cart[name] ?? 0;
+    final int qty = _quantityForItem(name);
     final String description = item['description'].toString().trim();
     final List<String> includedItems =
     (item['includedItems'] as List).map((e) => e.toString()).toList();
@@ -659,8 +710,10 @@ class _MenuPageState extends State<MenuPage> {
     final String subscriptionPlan = item['subscriptionPlan'].toString();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-      padding: const EdgeInsets.all(12),
+      margin: compact
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      padding: EdgeInsets.all(compact ? 10 : 12),
       decoration: BoxDecoration(
         color: _cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -673,156 +726,310 @@ class _MenuPageState extends State<MenuPage> {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildImageArea(item),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        if (isFeatured)
-                          _buildChip('Featured', icon: Icons.star_border),
-                        if (subscriptionPlan != 'free')
-                          _buildChip(
-                            subscriptionPlan == 'pro' ? 'Pro' : 'Premium',
-                            icon: Icons.workspace_premium_outlined,
-                          ),
-                      ],
-                    ),
-                    if (isFeatured || subscriptionPlan != 'free')
-                      const SizedBox(height: 6),
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: _primaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '\$${price.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: _secondaryText,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (description.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        description,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: _secondaryText,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (includedItems.isNotEmpty ||
-              removableOptions.isNotEmpty ||
-              addOns.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (includedItems.isNotEmpty) ...[
-                    _buildSectionLabel('Included'),
-                    Wrap(
-                      children: includedItems
-                          .map((e) => _buildChip(e, icon: Icons.check_circle_outline))
-                          .toList(),
-                    ),
-                    const SizedBox(height: 6),
-                  ],
-                  if (removableOptions.isNotEmpty) ...[
-                    _buildSectionLabel('Can remove'),
-                    Wrap(
-                      children: removableOptions
-                          .map((e) => _buildChip(e, icon: Icons.remove_circle_outline))
-                          .toList(),
-                    ),
-                    const SizedBox(height: 6),
-                  ],
-                  if (addOns.isNotEmpty) ...[
-                    _buildSectionLabel('Add-ons'),
-                    Wrap(
-                      children: addOns.map((addOn) {
-                        final String addOnName =
-                        (addOn['name'] ?? '').toString();
-                        final double addOnPrice = _toDouble(addOn['price']);
-                        return _buildChip(
-                          '$addOnName (+\$${addOnPrice.toStringAsFixed(2)})',
-                          icon: Icons.add_circle_outline,
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ],
+      child: compact
+          ? _buildCompactItemCardBody(
+        item: item,
+        name: name,
+        price: price,
+        qty: qty,
+        description: description,
+        includedItems: includedItems,
+        removableOptions: removableOptions,
+        addOns: addOns,
+        isFeatured: isFeatured,
+        subscriptionPlan: subscriptionPlan,
+      )
+          : _buildNormalItemCardBody(
+        item: item,
+        name: name,
+        price: price,
+        qty: qty,
+        description: description,
+        includedItems: includedItems,
+        removableOptions: removableOptions,
+        addOns: addOns,
+        isFeatured: isFeatured,
+        subscriptionPlan: subscriptionPlan,
+      ),
+    );
+  }
+
+  Widget _buildNormalItemCardBody({
+    required Map<String, dynamic> item,
+    required String name,
+    required double price,
+    required int qty,
+    required String description,
+    required List<String> includedItems,
+    required List<String> removableOptions,
+    required List<Map<String, dynamic>> addOns,
+    required bool isFeatured,
+    required String subscriptionPlan,
+  }) {
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildImageArea(item),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildItemTextArea(
+                name: name,
+                price: price,
+                description: description,
+                isFeatured: isFeatured,
+                subscriptionPlan: subscriptionPlan,
               ),
             ),
           ],
-          const SizedBox(height: 12),
-          Row(
+        ),
+        _buildOptionsArea(
+          includedItems: includedItems,
+          removableOptions: removableOptions,
+          addOns: addOns,
+        ),
+        _buildQtyRow(name: name, qty: qty),
+      ],
+    );
+  }
+
+  Widget _buildCompactItemCardBody({
+    required Map<String, dynamic> item,
+    required String name,
+    required double price,
+    required int qty,
+    required String description,
+    required List<String> includedItems,
+    required List<String> removableOptions,
+    required List<Map<String, dynamic>> addOns,
+    required bool isFeatured,
+    required String subscriptionPlan,
+  }) {
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildImageArea(item, compact: true),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildItemTextArea(
+                name: name,
+                price: price,
+                description: description,
+                isFeatured: isFeatured,
+                subscriptionPlan: subscriptionPlan,
+                compact: true,
+              ),
+            ),
+          ],
+        ),
+        _buildOptionsArea(
+          includedItems: includedItems,
+          removableOptions: removableOptions,
+          addOns: addOns,
+          compact: true,
+        ),
+        _buildQtyRow(name: name, qty: qty, compact: true),
+      ],
+    );
+  }
+
+  Widget _buildItemTextArea({
+    required String name,
+    required double price,
+    required String description,
+    required bool isFeatured,
+    required String subscriptionPlan,
+    bool compact = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            if (isFeatured)
+              _buildChip('Featured', icon: Icons.star_border, compact: compact),
+            if (subscriptionPlan != 'free')
+              _buildChip(
+                subscriptionPlan == 'pro' ? 'Pro' : 'Premium',
+                icon: Icons.workspace_premium_outlined,
+                compact: compact,
+              ),
+          ],
+        ),
+        if (isFeatured || subscriptionPlan != 'free')
+          SizedBox(height: compact ? 4 : 6),
+        Text(
+          name,
+          maxLines: compact ? 2 : null,
+          overflow: compact ? TextOverflow.ellipsis : TextOverflow.visible,
+          style: TextStyle(
+            fontSize: compact ? 15 : 17,
+            fontWeight: FontWeight.w800,
+            color: _primaryText,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '\$${price.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: compact ? 14 : 15,
+            color: _secondaryText,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (description.isNotEmpty) ...[
+          SizedBox(height: compact ? 6 : 8),
+          Text(
+            description,
+            maxLines: compact ? 2 : null,
+            overflow: compact ? TextOverflow.ellipsis : TextOverflow.visible,
+            style: TextStyle(
+              fontSize: compact ? 12 : 13,
+              color: _secondaryText,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildOptionsArea({
+    required List<String> includedItems,
+    required List<String> removableOptions,
+    required List<Map<String, dynamic>> addOns,
+    bool compact = false,
+  }) {
+    if (includedItems.isEmpty && removableOptions.isEmpty && addOns.isEmpty) {
+      return const SizedBox(height: 12);
+    }
+
+    return Column(
+      children: [
+        SizedBox(height: compact ? 9 : 12),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(compact ? 8 : 10),
+          decoration: BoxDecoration(
+            color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  qty > 0 ? 'Added: $qty' : 'Tap + to add item',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _secondaryText,
-                    fontWeight: FontWeight.w600,
-                  ),
+              if (includedItems.isNotEmpty) ...[
+                _buildSectionLabel('Included', compact: compact),
+                Wrap(
+                  children: includedItems
+                      .map(
+                        (e) => _buildChip(
+                      e,
+                      icon: Icons.check_circle_outline,
+                      compact: compact,
+                    ),
+                  )
+                      .toList(),
+                ),
+                const SizedBox(height: 6),
+              ],
+              if (removableOptions.isNotEmpty) ...[
+                _buildSectionLabel('Can remove', compact: compact),
+                Wrap(
+                  children: removableOptions
+                      .map(
+                        (e) => _buildChip(
+                      e,
+                      icon: Icons.remove_circle_outline,
+                      compact: compact,
+                    ),
+                  )
+                      .toList(),
+                ),
+                const SizedBox(height: 6),
+              ],
+              if (addOns.isNotEmpty) ...[
+                _buildSectionLabel('Add-ons', compact: compact),
+                Wrap(
+                  children: addOns.map((addOn) {
+                    final String addOnName =
+                    (addOn['name'] ?? '').toString();
+                    final double addOnPrice = _toDouble(addOn['price']);
+                    return _buildChip(
+                      '$addOnName (+\$${addOnPrice.toStringAsFixed(2)})',
+                      icon: Icons.add_circle_outline,
+                      compact: compact,
+                    );
+                  }).toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQtyRow({
+    required String name,
+    required int qty,
+    bool compact = false,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(top: compact ? 8 : 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              qty > 0 ? 'Added: $qty' : 'Tap + to add item',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: compact ? 12 : 13,
+                color: _secondaryText,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                visualDensity:
+                compact ? VisualDensity.compact : VisualDensity.standard,
+                onPressed: () => removeItem(name),
+                icon: Icon(
+                  Icons.remove_circle,
+                  color: _isDarkMode ? Colors.orange : Colors.black,
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    onPressed: () => removeItem(name),
-                    icon: Icon(
-                      Icons.remove_circle,
-                      color: _isDarkMode ? Colors.orange : Colors.black,
-                    ),
-                  ),
-                  Text(
-                    qty.toString(),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: _primaryText,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => _showCustomizeItemDialog(item),
-                    icon: Icon(
-                      Icons.add_circle,
-                      color: _isDarkMode ? Colors.orange : Colors.black,
-                    ),
-                  ),
-                ],
+              Text(
+                qty.toString(),
+                style: TextStyle(
+                  fontSize: compact ? 15 : 16,
+                  fontWeight: FontWeight.bold,
+                  color: _primaryText,
+                ),
+              ),
+              IconButton(
+                visualDensity:
+                compact ? VisualDensity.compact : VisualDensity.standard,
+                onPressed: () {
+                  final item = menuItems.firstWhere(
+                        (menuItem) => menuItem['name'].toString() == name,
+                  );
+                  _showCustomizeItemDialog(item);
+                },
+                icon: Icon(
+                  Icons.add_circle,
+                  color: _isDarkMode ? Colors.orange : Colors.black,
+                ),
               ),
             ],
           ),
@@ -831,9 +1038,162 @@ class _MenuPageState extends State<MenuPage> {
     );
   }
 
+  List<Widget> _buildCategorySections({
+    required Map<String, List<Map<String, dynamic>>> grouped,
+    required int columnCount,
+    required bool compact,
+  }) {
+    return grouped.entries.map((entry) {
+      final String category = entry.key;
+      final List<Map<String, dynamic>> items = entry.value;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 12 : 16,
+              compact ? 12 : 14,
+              compact ? 12 : 16,
+              8,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    category,
+                    style: TextStyle(
+                      fontSize: compact ? 17 : 19,
+                      fontWeight: FontWeight.bold,
+                      color: _primaryText,
+                    ),
+                  ),
+                ),
+                if (compact)
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$columnCount columns',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (columnCount == 1)
+            ...items.map((item) => _buildItemCard(item, compact: false))
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: items.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columnCount,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: columnCount == 3 ? 1.12 : 1.35,
+                ),
+                itemBuilder: (context, index) {
+                  return _buildItemCard(items[index], compact: true);
+                },
+              ),
+            ),
+        ],
+      );
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _buildOrderItemsForReturn() {
+    final List<Map<String, dynamic>> orderItems = [];
+
+    for (final entry in cart.entries) {
+      final String cartKey = entry.key;
+      final int quantity = entry.value;
+
+      final parts = cartKey.split('__');
+      final String itemName = parts.isNotEmpty ? parts[0] : '';
+
+      final Map<String, dynamic>? matchedItem =
+      menuItems.cast<Map<String, dynamic>?>().firstWhere(
+            (item) => item != null && item['name'].toString() == itemName,
+        orElse: () => null,
+      );
+
+      final double basePrice =
+      matchedItem != null ? _toDouble(matchedItem['price']) : 0.0;
+
+      List<String> removedOptions = [];
+      List<Map<String, dynamic>> selectedAddOns = [];
+      String notes = '';
+
+      for (final part in parts.skip(1)) {
+        if (part.startsWith('removed:')) {
+          final removedText = part.replaceFirst('removed:', '');
+          if (removedText.trim().isNotEmpty) {
+            removedOptions = removedText
+                .split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
+          }
+        } else if (part.startsWith('addons:')) {
+          final addOnText = part.replaceFirst('addons:', '');
+          if (addOnText.trim().isNotEmpty) {
+            selectedAddOns = addOnText
+                .split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .map((e) {
+              final addOnParts = e.split('|');
+              return {
+                'name': addOnParts.isNotEmpty ? addOnParts[0] : '',
+                'price':
+                addOnParts.length > 1 ? _toDouble(addOnParts[1]) : 0.0,
+              };
+            }).toList();
+          }
+        } else if (part.startsWith('notes:')) {
+          notes = part.replaceFirst('notes:', '').trim();
+        }
+      }
+
+      final double itemTotal = _calculateCustomItemTotal(
+        basePrice,
+        selectedAddOns,
+        quantity,
+      );
+
+      orderItems.add({
+        'cartKey': cartKey,
+        'name': itemName,
+        'quantity': quantity,
+        'basePrice': basePrice,
+        'removedOptions': removedOptions,
+        'selectedAddOns': selectedAddOns,
+        'notes': notes,
+        'totalPrice': itemTotal,
+      });
+    }
+
+    return orderItems;
+  }
+
   @override
   Widget build(BuildContext context) {
     final grouped = groupedMenu;
+    final int columnCount = _ownerGridColumnCount(context);
+    final bool compact = _useOwnerCompactCards(context);
 
     return Scaffold(
       backgroundColor: _pageBg,
@@ -849,7 +1209,9 @@ class _MenuPageState extends State<MenuPage> {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
             child: Text(
-              'Menu details, item options, and owner-side local photos are ready here.',
+              widget.isOwnerView
+                  ? 'Owner POS menu. Rotate your phone/tablet for 2–3 item grid view.'
+                  : 'Menu details, item options, and photos are ready here.',
               style: TextStyle(
                 fontSize: 14,
                 color: _secondaryText,
@@ -864,42 +1226,30 @@ class _MenuPageState extends State<MenuPage> {
                 'No available menu items yet.',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.grey.shade700,
+                  color: _secondaryText,
                 ),
               ),
             )
                 : ListView(
               padding: const EdgeInsets.only(bottom: 10),
-              children: grouped.entries.map((entry) {
-                final String category = entry.key;
-                final List<Map<String, dynamic>> items = entry.value;
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                      child: Text(
-                        category,
-                        style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
-                          color: _primaryText,
-                        ),
-                      ),
-                    ),
-                    ...items.map(_buildItemCard),
-                  ],
-                );
-              }).toList(),
+              children: _buildCategorySections(
+                grouped: grouped,
+                columnCount: columnCount,
+                compact: compact,
+              ),
             ),
           ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.orange.shade100,
+              color: _isDarkMode ? Colors.grey.shade900 : Colors.orange.shade100,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(18),
+              ),
+              border: Border(
+                top: BorderSide(
+                  color: _isDarkMode ? Colors.grey.shade700 : Colors.orange.shade200,
+                ),
               ),
             ),
             child: Column(
@@ -907,11 +1257,12 @@ class _MenuPageState extends State<MenuPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Selected Items',
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
+                        color: _primaryText,
                       ),
                     ),
                     Text(
@@ -928,16 +1279,20 @@ class _MenuPageState extends State<MenuPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Total',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: _primaryText,
                       ),
                     ),
                     Text(
                       '\$${total.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 18),
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: _primaryText,
+                      ),
                     ),
                   ],
                 ),
@@ -948,78 +1303,9 @@ class _MenuPageState extends State<MenuPage> {
                     onPressed: total == 0
                         ? null
                         : () {
-                      final List<Map<String, dynamic>> orderItems = [];
-
-                      for (final entry in cart.entries) {
-                        final String cartKey = entry.key;
-                        final int quantity = entry.value;
-
-                        final parts = cartKey.split('__');
-                        final String itemName = parts.isNotEmpty ? parts[0] : '';
-
-                        final Map<String, dynamic>? matchedItem = menuItems.cast<Map<String, dynamic>?>().firstWhere(
-                              (item) => item != null && item['name'].toString() == itemName,
-                          orElse: () => null,
-                        );
-
-                        final double basePrice =
-                        matchedItem != null ? _toDouble(matchedItem['price']) : 0.0;
-
-                        List<String> removedOptions = [];
-                        List<Map<String, dynamic>> selectedAddOns = [];
-                        String notes = '';
-
-                        for (final part in parts.skip(1)) {
-                          if (part.startsWith('removed:')) {
-                            final removedText = part.replaceFirst('removed:', '');
-                            if (removedText.trim().isNotEmpty) {
-                              removedOptions = removedText
-                                  .split(',')
-                                  .map((e) => e.trim())
-                                  .where((e) => e.isNotEmpty)
-                                  .toList();
-                            }
-                          } else if (part.startsWith('addons:')) {
-                            final addOnText = part.replaceFirst('addons:', '');
-                            if (addOnText.trim().isNotEmpty) {
-                              selectedAddOns = addOnText
-                                  .split(',')
-                                  .map((e) => e.trim())
-                                  .where((e) => e.isNotEmpty)
-                                  .map((e) {
-                                final addOnParts = e.split('|');
-                                return {
-                                  'name': addOnParts.isNotEmpty ? addOnParts[0] : '',
-                                  'price': addOnParts.length > 1 ? _toDouble(addOnParts[1]) : 0.0,
-                                };
-                              }).toList();
-                            }
-                          } else if (part.startsWith('notes:')) {
-                            notes = part.replaceFirst('notes:', '').trim();
-                          }
-                        }
-
-                        final double itemTotal = _calculateCustomItemTotal(
-                          basePrice,
-                          selectedAddOns,
-                          quantity,
-                        );
-
-                        orderItems.add({
-                          'cartKey': cartKey,
-                          'name': itemName,
-                          'quantity': quantity,
-                          'basePrice': basePrice,
-                          'removedOptions': removedOptions,
-                          'selectedAddOns': selectedAddOns,
-                          'notes': notes,
-                          'totalPrice': itemTotal,
-                        });
-                      }
-
                       Navigator.pop(context, {
                         'cart': cart,
-                        'orderItems': orderItems,
+                        'orderItems': _buildOrderItemsForReturn(),
                         'total': total,
                       });
                     },

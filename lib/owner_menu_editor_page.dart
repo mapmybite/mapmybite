@@ -21,6 +21,7 @@ class OwnerMenuEditorPage extends StatefulWidget {
 
 class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
   late List<Map<String, dynamic>> menuItems;
+  final Set<String> expandedMenuItemIds = {};
   final ImagePicker _picker = ImagePicker();
   Future<File> _compressPickedMenuImage(
       XFile picked, {
@@ -160,7 +161,13 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
     return <Map<String, dynamic>>[];
   }
 
-  int get _menuItemLimit => 25;
+  int get _menuItemLimit {
+    if (widget.selectedPlan == 'platinum') {
+      return 50;
+    }
+
+    return 25;
+  }
 
   int get _customerPhotoEnabledCount {
     return menuItems.where((item) => item['customerCanSeeImage'] == true).length;
@@ -318,6 +325,33 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
       if (menuItems.isEmpty) {
         menuItems.add(_emptyMenuItem());
       }
+    });
+  }
+  void _duplicateItem(int index) {
+    if (menuItems.length >= _menuItemLimit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Your ${_planDisplayName(widget.selectedPlan)} plan allows up to $_menuItemLimit menu items',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final Map<String, dynamic> original =
+    Map<String, dynamic>.from(menuItems[index]);
+
+    final Map<String, dynamic> copy = {
+      ...original,
+      'id': DateTime.now().microsecondsSinceEpoch.toString(),
+      'name': '${original['name']} Copy',
+      'isFeatured': false,
+    };
+
+    setState(() {
+      menuItems.insert(index + 1, copy);
+      expandedMenuItemIds.add(copy['id'].toString());
     });
   }
 
@@ -788,6 +822,8 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
     final item = menuItems[index];
     final String plan = item['subscriptionPlan'].toString();
     final Color planColor = _planColor(plan);
+    final String itemId = item['id'].toString();
+    final bool isExpanded = expandedMenuItemIds.contains(itemId);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -821,23 +857,98 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'Menu Item ${index + 1}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item['name'].toString().trim().isEmpty
+                          ? 'Menu Item ${index + 1}'
+                          : item['name'].toString(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (!isExpanded && item['price'].toString().trim().isNotEmpty)
+                      Text(
+                        '\$${item['price']}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    if (!isExpanded)
+                      Text(
+                        item['category'].toString(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                  ],
                 ),
+              ),
+              IconButton(
+                tooltip: 'Duplicate item',
+                onPressed: () => _duplicateItem(index),
+                icon: const Icon(Icons.copy_rounded),
               ),
               if (menuItems.length > 1)
                 IconButton(
+                  tooltip: 'Delete item',
                   onPressed: () => _removeItem(index),
                   icon: const Icon(Icons.delete_outline),
                 ),
+              if (!isExpanded)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item['isAvailable'] == true ? 'ON' : 'OFF',
+                      style: TextStyle(
+                        color: item['isAvailable'] == true
+                            ? Colors.green
+                            : Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Switch(
+                      value: item['isAvailable'] == true,
+                      onChanged: (value) {
+                        setState(() {
+                          menuItems[index]['isAvailable'] = value;
+                        });
+                      },
+                      activeColor: Colors.green,
+                    ),
+                  ],
+                ),
+              IconButton(
+                tooltip: isExpanded ? 'Collapse item' : 'Expand item',
+                onPressed: () {
+                  setState(() {
+                    if (isExpanded) {
+                      expandedMenuItemIds.remove(itemId);
+                    } else {
+                      expandedMenuItemIds.clear();
+                      expandedMenuItemIds.add(itemId);
+                    }
+                  });
+                },
+                icon: Icon(
+                  isExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          TextFormField(
+    if (isExpanded) ...[
+    const SizedBox(height: 12),
+    TextFormField(
             initialValue: item['name'].toString(),
             decoration: InputDecoration(
               labelText: 'Item name',
@@ -1152,7 +1263,8 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
             title: const Text('Featured item'),
           ),
           const SizedBox(height: 10),
-          _buildPlanCard(index),
+      _buildPlanCard(index),
+    ],
         ],
       ),
     );
@@ -1177,7 +1289,6 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
           Container(
             width: double.infinity,
             margin: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -1190,40 +1301,43 @@ class _OwnerMenuEditorPageState extends State<OwnerMenuEditorPage> {
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: Colors.orange.shade200),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: ExpansionTile(
+              initiallyExpanded: false,
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              title: const Text(
+                'Menu Setup Summary',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: Text(
+                'Up to $_menuItemLimit items • Remaining: $remaining',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               children: [
-                const Text(
-                  'Menu Setup Summary',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
                 Text(
-                  'Menu items: up to 25 total. Remaining: $remaining',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade800,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Gallery photos are separate from menu items. Free can add up to 25 menu items without customer menu photos. Pro allows customer menu photos for first 15 items. Premium allows customer menu photos for all 25 items. Platinum unlocks all menu features.',
+                  'Gallery photos are separate from menu items. Free can add up to 25 menu items without customer menu photos. Pro allows customer menu photos for first 15 items. Premium allows customer menu photos for all 25 items. Platinum allows up to 50 menu items with customer menu photos.',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey.shade800,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Customer menu-photo enabled right now: $_customerPhotoEnabledCount',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade800,
-                    fontWeight: FontWeight.w600,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Customer menu-photo enabled right now: $_customerPhotoEnabledCount',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade800,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],

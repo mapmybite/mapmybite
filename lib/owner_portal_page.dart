@@ -57,6 +57,10 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
 
     dailySpecialsDetailsController.text =
         (data['dailySpecialsDetails'] ?? '').toString();
+    dailySpecialsNameController.text =
+        (data['dailySpecialsName'] ?? '').toString();
+    dailySpecialsPriceController.text =
+        (data['dailySpecialsPrice'] ?? '').toString();
     cateringDetailsController.text =
         (data['cateringDetails'] ?? '').toString();
     tiffinDetailsController.text =
@@ -121,6 +125,8 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   final TextEditingController menuController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController dailySpecialsDetailsController = TextEditingController();
+  final TextEditingController dailySpecialsNameController = TextEditingController();
+  final TextEditingController dailySpecialsPriceController = TextEditingController();
   final TextEditingController cateringDetailsController = TextEditingController();
   final TextEditingController tiffinDetailsController = TextEditingController();
 
@@ -215,7 +221,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       case 'premium':
         return 10;
       case 'platinum':
-        return 15;
+        return 20;
       case 'free':
       default:
         return 3;
@@ -236,6 +242,10 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   }
 
   int get _menuItemLimit {
+    if (selectedPlan == 'platinum') {
+      return 50;
+    }
+
     return 25;
   }
 
@@ -267,6 +277,8 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     menuController.dispose();
     descriptionController.dispose();
     dailySpecialsDetailsController.dispose();
+    dailySpecialsNameController.dispose();
+    dailySpecialsPriceController.dispose();
     cateringDetailsController.dispose();
     tiffinDetailsController.dispose();
 
@@ -744,6 +756,8 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       'menuItems': ownerMenuItems.take(_menuItemLimit).toList(),
       'description': descriptionController.text.trim(),
       'dailySpecials': hasDailySpecials,
+      'dailySpecialsName': dailySpecialsNameController.text.trim(),
+      'dailySpecialsPrice': dailySpecialsPriceController.text.trim(),
       'dailySpecialsDetails': dailySpecialsDetailsController.text.trim(),
       'cateringAvailable': hasCatering,
       'cateringDetails': cateringDetailsController.text.trim(),
@@ -1456,7 +1470,7 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                 ? 'Pro Plan:\n• 1 banner image\n• Up to 6 gallery photos\n• 1 story video\n• Up to 25 menu items\n• First 15 menu items can include photos\n• Remaining menu items can be added without photos\n• Gallery photos are separate from menu items\n• In-app ordering enabled\n• POS system access'
                 : selectedPlan == 'premium'
                 ? 'Premium Plan:\n• 1 banner image\n• Up to 10 gallery photos\n• Up to 5 story videos\n• Up to 25 menu items\n• All 25 menu items can include photos\n• Gallery photos are separate from menu items\n• In-app ordering enabled\n• POS system access\n• More visibility & features'
-                : 'Platinum Plan:\n• 1 banner image\n• Up to 15 gallery photos\n• Up to 5 story videos\n• All menu features unlocked\n• Gallery photos are separate from menu items\n• In-app ordering & full POS\n• Verified accounts receive a verified badge\n• First 100 food trucks & home kitchens get lifetime flat-fee price lock\n• All future features included',
+                : 'Platinum Plan:\n• 1 banner image\n• Up to 20 gallery photos\n• Up to 5 story videos\n• Up to 50 menu items with photos\n• Gallery photos are separate from menu items\n• In-app ordering & full POS\n• POS printer lease included\n• Propane discount benefit up to 50¢ below regular store price where available\n• Currently limited propane locations in Stockton, more locations coming soon\n• Verified accounts receive a verified badge\n• First 50 food trucks get lifetime price lock\n• New tools and future features included',
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -1635,13 +1649,26 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                     title: const Text('Daily Specials Available'),
                     contentPadding: EdgeInsets.zero,
                   ),
-                  if (hasDailySpecials)
-                    _buildTextField(
-                      icon: Icons.local_offer,
-                      hintText: 'Today special details (example: Paneer wrap + mango lassi combo for \$12.99)',
-                      controller: dailySpecialsDetailsController,
-                      maxLines: 3,
-                    ),
+                  Column(
+                    children: [
+                      _buildTextField(
+                        icon: Icons.fastfood,
+                        hintText: 'Daily Special Name',
+                        controller: dailySpecialsNameController,
+                      ),
+                      _buildTextField(
+                        icon: Icons.attach_money,
+                        hintText: 'Daily Special Price',
+                        controller: dailySpecialsPriceController,
+                      ),
+                      _buildTextField(
+                        icon: Icons.local_offer,
+                        hintText: 'Today special details (example: Paneer wrap + mango lassi combo for \$12.99)',
+                        controller: dailySpecialsDetailsController,
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
                   SwitchListTile(
                     value: hasCatering,
                     onChanged: (value) {

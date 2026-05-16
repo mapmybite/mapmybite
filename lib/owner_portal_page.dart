@@ -35,6 +35,25 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
   String businessType = 'food_truck';
   String selectedPlan = 'free';
   bool enablePayNow = true;
+  final List<String> weekDays = const [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  Map<String, Map<String, dynamic>> weeklyHours = {
+    'Monday': {'open': '10:00 AM', 'close': '7:00 PM', 'closed': false},
+    'Tuesday': {'open': '10:00 AM', 'close': '7:00 PM', 'closed': false},
+    'Wednesday': {'open': '10:00 AM', 'close': '7:00 PM', 'closed': false},
+    'Thursday': {'open': '10:00 AM', 'close': '7:00 PM', 'closed': false},
+    'Friday': {'open': '10:00 AM', 'close': '7:00 PM', 'closed': false},
+    'Saturday': {'open': '10:00 AM', 'close': '10:00 PM', 'closed': false},
+    'Sunday': {'open': '10:00 AM', 'close': '10:00 PM', 'closed': false},
+  };
   @override
   void initState() {
     super.initState();
@@ -51,6 +70,18 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
     addressController.text = (data['address'] ?? '').toString();
     openTimeController.text = (data['openTime'] ?? '').toString();
     closeTimeController.text = (data['closeTime'] ?? '').toString();
+    final savedWeeklyHours = data['weeklyHours'];
+    if (savedWeeklyHours is Map) {
+      savedWeeklyHours.forEach((day, value) {
+        if (value is Map && weeklyHours.containsKey(day.toString())) {
+          weeklyHours[day.toString()] = {
+            'open': (value['open'] ?? weeklyHours[day.toString()]!['open']).toString(),
+            'close': (value['close'] ?? weeklyHours[day.toString()]!['close']).toString(),
+            'closed': value['closed'] == true,
+          };
+        }
+      });
+    }
     phoneController.text = (data['phone'] ?? '').toString();
     menuController.text = (data['menu'] ?? '').toString();
     descriptionController.text = (data['description'] ?? '').toString();
@@ -726,6 +757,25 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       },
     )
         .toList();
+    final List<Map<String, dynamic>> finalMenuItems =
+    ownerMenuItems.take(_menuItemLimit).toList();
+
+    if (hasDailySpecials &&
+        dailySpecialsNameController.text.trim().isNotEmpty &&
+        dailySpecialsPriceController.text.trim().isNotEmpty) {
+      finalMenuItems.removeWhere(
+            (item) => item['isDailySpecial'] == true,
+      );
+
+      finalMenuItems.insert(0, {
+        'name': dailySpecialsNameController.text.trim(),
+        'price': dailySpecialsPriceController.text.trim(),
+        'description': dailySpecialsDetailsController.text.trim(),
+        'details': dailySpecialsDetailsController.text.trim(),
+        'category': 'Daily Special',
+        'isDailySpecial': true,
+      });
+    }
 
     final Map<String, dynamic> newBusiness = {
       'id': widget.existingData?['id']?.toString() ??
@@ -745,15 +795,23 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
       'address': addressController.text.trim(),
       'latitude': latitude,
       'longitude': longitude,
-      'openTime': openTimeController.text.trim(),
-      'closeTime': closeTimeController.text.trim(),
+      'openTime': weeklyHours['Monday']?['open']?.toString() ?? '',
+      'closeTime': weeklyHours['Monday']?['close']?.toString() ?? '',
+      'weeklyHours': weeklyHours,
+      'weeklyHours': weeklyHours.map(
+            (day, value) => MapEntry(day, {
+          'open': value['open'].toString(),
+          'close': value['close'].toString(),
+          'closed': value['closed'] == true,
+        }),
+      ),
       'phone': phoneController.text.trim(),
       'whatsapp': whatsappController.text.trim(),
       'cashApp': cashAppController.text.trim(),
       'zelle': zelleController.text.trim(),
       'venmo': venmoController.text.trim(),
       'menu': menuController.text.trim(),
-      'menuItems': ownerMenuItems.take(_menuItemLimit).toList(),
+      'menuItems': finalMenuItems,
       'description': descriptionController.text.trim(),
       'dailySpecials': hasDailySpecials,
       'dailySpecialsName': dailySpecialsNameController.text.trim(),
@@ -869,6 +927,144 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
         fontSize: 16,
         fontWeight: FontWeight.bold,
       ),
+    );
+  }
+  final List<String> _timeOptions = const [
+    '6:00 AM',
+    '7:00 AM',
+    '8:00 AM',
+    '9:00 AM',
+    '10:00 AM',
+    '11:00 AM',
+    '12:00 PM',
+    '1:00 PM',
+    '2:00 PM',
+    '3:00 PM',
+    '4:00 PM',
+    '5:00 PM',
+    '6:00 PM',
+    '7:00 PM',
+    '8:00 PM',
+    '9:00 PM',
+    '10:00 PM',
+    '11:00 PM',
+    '12:00 AM',
+  ];
+  Widget _buildWeeklyHoursSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Weekly Business Hours'),
+        const SizedBox(height: 8),
+        Text(
+          'Set different hours for each day. This will help customers know when you are open.',
+          style: TextStyle(
+            fontSize: 13,
+            color: _secondaryText,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.orange.shade200),
+          ),
+          child: Column(
+            children: weekDays.map((day) {
+              final dayData = weeklyHours[day]!;
+              final bool isClosed = dayData['closed'] == true;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            day,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        const Text('Closed'),
+                        Switch(
+                          value: isClosed,
+                          onChanged: (value) {
+                            setState(() {
+                              weeklyHours[day]!['closed'] = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+
+                    if (!isClosed)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: dayData['open'].toString(),
+                              decoration: InputDecoration(
+                                labelText: 'Open',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              items: _timeOptions.map((time) {
+                                return DropdownMenuItem(
+                                  value: time,
+                                  child: Text(time),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() {
+                                  weeklyHours[day]!['open'] = value;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: dayData['close'].toString(),
+                              decoration: InputDecoration(
+                                labelText: 'Close',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              items: _timeOptions.map((time) {
+                                return DropdownMenuItem(
+                                  value: time,
+                                  child: Text(time),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() {
+                                  weeklyHours[day]!['close'] = value;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1596,16 +1792,8 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
                 onPressed: _pickCurrentLocationForAddress,
               ),
             ),
-            _buildTextField(
-              icon: Icons.access_time,
-              hintText: 'Open Time',
-              controller: openTimeController,
-            ),
-            _buildTextField(
-              icon: Icons.access_time_filled,
-              hintText: 'Close Time',
-              controller: closeTimeController,
-            ),
+            _buildWeeklyHoursSection(),
+            const SizedBox(height: 16),
             _buildTextField(
               icon: Icons.phone,
               hintText: 'Phone Number',
@@ -1717,22 +1905,22 @@ class _OwnerPortalPageState extends State<OwnerPortalPage> {
             const SizedBox(height: 10),
             _buildTextField(
               icon: Icons.camera_alt,
-              hintText: 'Instagram username or URL',
+              hintText: 'Instagram handle only (example: sahibsaini1981)',
               controller: instagramController,
             ),
             _buildTextField(
               icon: Icons.facebook,
-              hintText: 'Facebook username or URL',
+              hintText: 'Facebook page/handle only',
               controller: facebookController,
             ),
             _buildTextField(
               icon: Icons.music_note,
-              hintText: 'TikTok username or URL',
+              hintText: 'TikTok handle only (example: foodtruck209)',
               controller: tiktokController,
             ),
             _buildTextField(
               icon: Icons.play_circle_fill,
-              hintText: 'YouTube channel handle or URL',
+              hintText: 'YouTube handle only (example: mapmybite)',
               controller: youtubeController,
             ),
             _buildTextField(

@@ -16,6 +16,7 @@ import 'notification_data.dart';
 import 'local_notification_service.dart';
 import 'orders_page.dart';
 import 'favorite_data.dart';
+import 'owner_customer_data.dart';
 
 
 
@@ -194,10 +195,52 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
   }
 
   String _buildTimingText() {
+    final Map weeklyHours =
+    widget.truck['weeklyHours'] is Map
+        ? widget.truck['weeklyHours']
+        : {};
+
+    if (weeklyHours.isNotEmpty) {
+      final List<String> weekDays = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
+
+      final int todayIndex = DateTime.now().weekday - 1;
+      final String today = weekDays[todayIndex];
+
+      final todayData = weeklyHours[today];
+
+      if (todayData is Map) {
+        final bool isClosed = todayData['closed'] == true;
+
+        if (isClosed) {
+          return '$today • Closed';
+        }
+
+        final String open =
+        (todayData['open'] ?? '').toString().trim();
+
+        final String close =
+        (todayData['close'] ?? '').toString().trim();
+
+        if (open.isNotEmpty && close.isNotEmpty) {
+          return '$today • $open - $close';
+        }
+      }
+    }
+
     final String timing = (widget.truck['timing'] ?? '').toString().trim();
     if (timing.isNotEmpty) return timing;
 
-    final String openTime = (widget.truck['openTime'] ?? '').toString().trim();
+    final String openTime =
+    (widget.truck['openTime'] ?? '').toString().trim();
+
     final String closeTime =
     (widget.truck['closeTime'] ?? '').toString().trim();
 
@@ -209,6 +252,99 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     if (closeTime.isNotEmpty) return closeTime;
 
     return 'Timing not available';
+  }
+  void _showWeeklyHoursSheet() {
+    final Map weeklyHours =
+    widget.truck['weeklyHours'] is Map ? widget.truck['weeklyHours'] : {};
+
+    final List<String> weekDays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _isDarkMode ? Colors.grey.shade900 : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Weekly Business Hours',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _primaryText,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              if (weeklyHours.isEmpty)
+                Text(
+                  _buildTimingText(),
+                  style: TextStyle(color: _primaryText),
+                )
+              else
+                ...weekDays.map((day) {
+                  final data = weeklyHours[day];
+
+                  String hoursText = 'Not set';
+                  if (data is Map) {
+                    if (data['closed'] == true) {
+                      hoursText = 'Closed';
+                    } else {
+                      hoursText =
+                      '${data['open'] ?? ''} - ${data['close'] ?? ''}';
+                    }
+                  }
+
+                  final bool isToday = DateTime.now().weekday == weekDays.indexOf(day) + 1;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isToday ? '$day  • Today' : day,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isToday ? Colors.orange : _primaryText,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          hoursText,
+                          style: TextStyle(color: _primaryText),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   bool _isFilePath(String path) {
@@ -752,6 +888,36 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     );
   }
   void _showServiceInfo(String title, String details) {
+    final bool isDailySpecial =
+        title == 'Today\'s Special' || title.toLowerCase().contains('daily');
+
+    final String specialName =
+    (widget.truck['dailySpecialsName'] ?? '').toString().trim();
+
+    final List menuItems = widget.truck['menuItems'] is List
+        ? widget.truck['menuItems'] as List
+        : [];
+
+    final Map<String, dynamic> dailySpecialItem = menuItems
+        .whereType<Map>()
+        .map((item) => item.map(
+          (key, value) => MapEntry(key.toString(), value),
+    ))
+        .firstWhere(
+          (item) => item['isDailySpecial'] == true,
+      orElse: () => {},
+    );
+
+    final String specialPriceText =
+    (dailySpecialItem['price'] ?? widget.truck['dailySpecialsPrice'] ?? '')
+        .toString()
+        .trim();
+
+    final double specialPrice = double.tryParse(
+      specialPriceText.replaceAll('\$', '').trim(),
+    ) ??
+        0.0;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: _isDarkMode ? Colors.grey.shade900 : Colors.white,
@@ -767,9 +933,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: _primaryText,
                 ),
               ),
               const SizedBox(height: 12),
@@ -781,7 +948,57 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                   color: _primaryText,
                 ),
               ),
-              const SizedBox(height: 18),
+
+              if (title == 'Today\'s Special') ...[
+                const SizedBox(height: 12),
+                Text(
+                  '\$$specialPriceText',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        final String itemName = specialName.isEmpty
+                            ? 'Today Special'
+                            : specialName;
+
+                        _selectedMenuCart[itemName] =
+                            (_selectedMenuCart[itemName] ?? 0) + 1;
+
+                        _selectedMenuTotal += specialPrice;
+                      });
+
+                      Navigator.pop(context);
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('$specialName added to cart'),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add_shopping_cart),
+                    label: Text(
+                      specialName.isEmpty
+                          ? 'Add Today Special'
+                          : 'Add $specialName to Cart',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepOrange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -979,11 +1196,19 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
     if (confirmed == true) {
       if (!mounted) return;
+      final customerData = OwnerCustomerData.saveOrUpdateCustomer(
+        business: (widget.truck['title'] ?? '').toString(),
+        name: customerName,
+        phone: phone,
+        totalSpent: _selectedMenuTotal,
+      );
 
       OrderData.orders.add({
         'business': widget.truck['title'] ?? '',
         'customer': customerName,
         'phone': phone,
+        'visitCount': customerData?['visitCount'] ?? 1,
+        'rewardPunches': customerData?['rewardPunches'] ?? 1,
         'items': items,
         'quantity': quantity,
         'date': dateText,
@@ -2641,8 +2866,15 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
         : (galleryImages.isNotEmpty ? galleryImages.first : '');
 
     final String timingText = _buildTimingText();
-    final bool isOpen = timingText.contains('-')
-        ? _isOpenNow(timingText)
+
+    String openCheckText = timingText;
+
+    if (timingText.contains('•')) {
+      openCheckText = timingText.split('•').last.trim();
+    }
+
+    final bool isOpen = openCheckText.contains('-')
+        ? _isOpenNow(openCheckText)
         : false;
 
     final String instagram = (widget.truck['instagram'] ?? '').toString();
@@ -3212,41 +3444,52 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const Icon(Icons.access_time, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      timingText,
-                      style: TextStyle(
-                        color: _secondaryText,
-                      ),
-                    ),
-                  ),
-                  if (timingText.contains('-')) ...[
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isOpen
-                            ? Colors.green.shade100
-                            : Colors.red.shade100,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        isOpen ? 'OPEN' : 'CLOSED',
-                        style: TextStyle(
-                          color: isOpen ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.bold,
+              child: InkWell(
+                onTap: _showWeeklyHoursSheet,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 18, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          timingText,
+                          style: TextStyle(
+                            color: _secondaryText,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ],
+                      if (timingText.contains('-')) ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isOpen
+                                ? Colors.green.shade100
+                                : Colors.red.shade100,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            isOpen ? 'OPEN' : 'CLOSED',
+                            style: TextStyle(
+                              color: isOpen ? Colors.green.shade800 : Colors.red.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 4),
+                      const Icon(Icons.keyboard_arrow_down, color: Colors.orange),
+                    ],
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -3321,17 +3564,83 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color:
-                  _isKitchen ? Colors.purple.shade100 : Colors.orange.shade100,
+                  color: _isKitchen ? Colors.purple.shade100 : Colors.orange.shade100,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Text(
-                  widget.truck['dailySpecial'] ??
-                      'No daily special available today',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      (widget.truck['dailySpecialsName'] ?? '').toString().trim().isEmpty
+                          ? 'No daily special available today'
+                          : widget.truck['dailySpecialsName'].toString(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    if ((widget.truck['dailySpecialsPrice'] ?? '').toString().trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '\$${widget.truck['dailySpecialsPrice']}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+
+                    if ((widget.truck['dailySpecialsDetails'] ?? '').toString().trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        widget.truck['dailySpecialsDetails'].toString(),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+
+                    if ((widget.truck['dailySpecialsName'] ?? '').toString().trim().isNotEmpty &&
+                        (widget.truck['dailySpecialsPrice'] ?? '').toString().trim().isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            final String specialName =
+                            widget.truck['dailySpecialsName'].toString();
+
+                            final double specialPrice = double.tryParse(
+                              widget.truck['dailySpecialsPrice']
+                                  .toString()
+                                  .replaceAll('\$', '')
+                                  .trim(),
+                            ) ??
+                                0.0;
+
+                            setState(() {
+                              _selectedMenuCart[specialName] =
+                                  (_selectedMenuCart[specialName] ?? 0) + 1;
+
+                              _selectedMenuTotal += specialPrice;
+                            });
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('$specialName added to cart'),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.add_shopping_cart),
+                          label: const Text('Add Daily Special'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepOrange,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),

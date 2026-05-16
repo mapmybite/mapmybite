@@ -6,6 +6,7 @@ import 'notification_data.dart';
 import 'local_notification_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'owner_customer_data.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -1439,13 +1440,46 @@ class _OrdersPageState extends State<OrdersPage> {
                                       : Colors.green.shade100,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text(
-                                  isReturningCustomer ? 'Returning' : 'New',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: isReturningCustomer ? Colors.orange : Colors.green,
-                                  ),
+                                child: Builder(
+                                  builder: (context) {
+                                    final int visits =
+                                    (order['visitCount'] is num)
+                                        ? (order['visitCount'] as num).toInt()
+                                        : 1;
+
+                                    final int punches =
+                                    (order['rewardPunches'] is num)
+                                        ? (order['rewardPunches'] as num).toInt()
+                                        : 1;
+
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          isReturningCustomer
+                                              ? 'Returning • $visits visits'
+                                              : 'New Customer',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: isReturningCustomer
+                                                ? Colors.orange
+                                                : Colors.green,
+                                          ),
+                                        ),
+
+                                        if (isReturningCustomer)
+                                          Text(
+                                            'Reward $punches/5',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.orange.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  },
                                 ),
                               ),
                           ],

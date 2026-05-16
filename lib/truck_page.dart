@@ -755,12 +755,15 @@ class _TruckPageState extends State<TruckPage> {
       'timing': _buildTimingFromResult(result),
       'openTime': result['openTime'] ?? '',
       'closeTime': result['closeTime'] ?? '',
+      'weeklyHours': result['weeklyHours'] ?? {},
       'address': result['address'] ?? '',
       'menu': result['menu'] ?? '',
       'menuItems': result['menuItems'] ?? [],
       'description': result['description'] ?? '',
 
       'dailySpecials': result['dailySpecials'] ?? false,
+      'dailySpecialsName': result['dailySpecialsName'] ?? '',
+      'dailySpecialsPrice': result['dailySpecialsPrice'] ?? '',
       'dailySpecialsDetails': result['dailySpecialsDetails'] ?? '',
       'cateringAvailable': result['cateringAvailable'] ?? false,
       'cateringDetails': result['cateringDetails'] ?? '',
@@ -2071,12 +2074,18 @@ class _TruckPageState extends State<TruckPage> {
                             (kitchen) => kitchen['id']?.toString() == editedId,
                       );
 
-                      if (truckIndex != -1) {
-                        foodTrucks[truckIndex].addAll(result);
-                      }
-
-                      if (kitchenIndex != -1) {
-                        homeKitchens[kitchenIndex].addAll(result);
+                      if (result['type'] == 'home_kitchen') {
+                        if (kitchenIndex != -1) {
+                          homeKitchens[kitchenIndex] = Map<String, dynamic>.from(result);
+                        } else {
+                          homeKitchens.add(Map<String, dynamic>.from(result));
+                        }
+                      } else {
+                        if (truckIndex != -1) {
+                          foodTrucks[truckIndex] = Map<String, dynamic>.from(result);
+                        } else {
+                          foodTrucks.add(Map<String, dynamic>.from(result));
+                        }
                       }
                     });
                   }

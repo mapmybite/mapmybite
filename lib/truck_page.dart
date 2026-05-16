@@ -1,3 +1,4 @@
+import 'admin_page.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'app_text.dart';
@@ -1913,6 +1914,23 @@ class _TruckPageState extends State<TruckPage> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const OrdersPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings),
+              title: const Text('Admin Dashboard'),
+              onTap: () {
+                Navigator.pop(context);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminPage(
+                      vendors: _allVendors,
+                      isDarkMode: _isDarkMode,
+                    ),
                   ),
                 );
               },

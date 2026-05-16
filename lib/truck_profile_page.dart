@@ -2185,6 +2185,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                           final dateText =
                               '${now.month}/${now.day}/${now.year}';
                           final timeText = TimeOfDay.now().format(context);
+                          final customerData = OwnerCustomerData.saveOrUpdateCustomer(
+                            business: (widget.truck['title'] ?? '').toString(),
+                            name: customerNameController.text.trim().isEmpty
+                                ? 'Walk-in Customer'
+                                : customerNameController.text.trim(),
+                            phone: customerPhoneController.text.trim(),
+                            totalSpent: _selectedMenuTotal,
+                          );
 
                           OrderData.orders.add({
                             'business': widget.truck['title'] ?? '',
@@ -2192,6 +2200,8 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                                 ? 'Walk-in Customer'
                                 : customerNameController.text.trim(),
                             'phone': customerPhoneController.text.trim(),
+                            'visitCount': customerData?['visitCount'] ?? 1,
+                            'rewardPunches': customerData?['rewardPunches'] ?? 1,
                             'mmbId': customerIdController.text.trim(),
                             'items': _selectedItemsText(),
                             'quantity': _selectedTotalQuantity().toString(),

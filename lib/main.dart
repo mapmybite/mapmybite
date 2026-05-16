@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'role_selection_page.dart';
+import 'welcome_page.dart';
 import 'app_text.dart';
 import 'favorite_data.dart';
 
@@ -52,7 +52,7 @@ class MapMyBiteApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const RoleSelectionPage(),
+      home: const WelcomePage(),
     );
   }
 }

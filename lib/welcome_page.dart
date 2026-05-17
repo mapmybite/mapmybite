@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'app_text.dart';
 import 'truck_page.dart';
+import 'customer_home_page.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -62,7 +63,9 @@ class _WelcomePageState extends State<WelcomePage>
   void _openCustomer() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const TruckPage()),
+      MaterialPageRoute(
+        builder: (_) => const CustomerHomePage(),
+      ),
     );
   }
 
@@ -92,7 +95,7 @@ class _WelcomePageState extends State<WelcomePage>
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(14),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -221,9 +224,9 @@ class _WelcomePageState extends State<WelcomePage>
             child: SafeArea(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
-                  wide ? 42 : 14,
+                  wide ? 42 : 20,
                   8,
-                  wide ? 42 : 14,
+                  wide ? 42 : 20,
                   12,
                 ),
                 child: Column(
@@ -274,7 +277,7 @@ class _WelcomePageState extends State<WelcomePage>
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 42),
                     if (wide)
                       Row(
                         children: [
@@ -431,7 +434,7 @@ class _WelcomePageState extends State<WelcomePage>
     required bool wide,
   }) {
     return SizedBox(
-      height: wide ? 310 : 222,
+      height: wide ? 310 : 205,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -570,10 +573,10 @@ class _WelcomePageState extends State<WelcomePage>
         'ਗਾਹਕ ਵਜੋਂ\nਜਾਰੀ ਰੱਖੋ',
       ),
       description: _t(
-        'Find verified food trucks & home kitchens near you on a live map.',
-        'Encuentra food trucks y cocinas caseras verificadas cerca de ti.',
-        'अपने पास सत्यापित फूड ट्रक और होम किचन खोजें।',
-        'ਆਪਣੇ ਨੇੜੇ ਵੈਰੀਫਾਈਡ ਫੂਡ ਟਰੱਕ ਅਤੇ ਹੋਮ ਕਿਚਨ ਲੱਭੋ।',
+        'Discover nearby food spots.',
+        'Descubre comida cerca de ti.',
+        'अपने पास खाना खोजें।',
+        'ਆਪਣੇ ਨੇੜੇ ਖਾਣਾ ਲੱਭੋ।',
       ),
       art: _phoneArt(),
       chips: [
@@ -610,10 +613,10 @@ class _WelcomePageState extends State<WelcomePage>
         'ਮਾਲਕ ਵਜੋਂ\nਜਾਰੀ ਰੱਖੋ',
       ),
       description: _t(
-        'List your truck or kitchen, manage menus, orders & payments.',
-        'Publica tu negocio y administra menús, pedidos y pagos.',
-        'अपना ट्रक या किचन जोड़ें, मेनू, ऑर्डर और पेमेंट संभालें।',
-        'ਆਪਣਾ ਟਰੱਕ ਜਾਂ ਕਿਚਨ ਜੋੜੋ, ਮੀਨੂ, ਆਰਡਰ ਅਤੇ ਪੇਮੈਂਟ ਸੰਭਾਲੋ।',
+        'Manage menus, orders & payments.',
+        'Administra menús, pedidos y pagos.',
+        'मेनू, ऑर्डर और पेमेंट संभालें।',
+        'ਮੀਨੂ, ਆਰਡਰ ਅਤੇ ਪੇਮੈਂਟ ਸੰਭਾਲੋ।',
       ),
       art: _tabletArt(),
       chips: [
@@ -646,10 +649,10 @@ class _WelcomePageState extends State<WelcomePage>
     required VoidCallback onTap,
   }) {
     return Container(
-      padding: EdgeInsets.all(wide ? 18 : 9),
+      padding: EdgeInsets.all(wide ? 18 : 7),
       decoration: BoxDecoration(
         color: _cardColor,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor, width: 1.3),
         boxShadow: [
           BoxShadow(
@@ -701,7 +704,7 @@ class _WelcomePageState extends State<WelcomePage>
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: wide ? 24 : 18,
+                fontSize: wide ? 24 : 16.5,
                 height: 1.05,
                 fontWeight: FontWeight.w900,
                 color: _mainText,
@@ -718,7 +721,7 @@ class _WelcomePageState extends State<WelcomePage>
               style: TextStyle(
                 color: _subText,
                 height: 1.2,
-                fontSize: wide ? 14 : 12.2,
+                fontSize: wide ? 14 : 11.2,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -756,7 +759,7 @@ class _WelcomePageState extends State<WelcomePage>
           SizedBox(height: wide ? 13 : 5),
           SizedBox(
             width: double.infinity,
-            height: wide ? 52 : 38,
+            height: wide ? 52 : 34,
             child: ElevatedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
@@ -765,7 +768,7 @@ class _WelcomePageState extends State<WelcomePage>
                 elevation: 7,
                 shadowColor: buttonColor.withValues(alpha: 0.30),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(17),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: Text(

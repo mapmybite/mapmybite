@@ -25,6 +25,7 @@ class TruckProfilePage extends StatefulWidget {
   final bool isOwner;
   final bool initialIsFavorite;
   final bool isDarkMode;
+  final bool isGuestMode;
   final ValueChanged<bool>? onFavoriteChanged;
 
   const TruckProfilePage({
@@ -33,6 +34,7 @@ class TruckProfilePage extends StatefulWidget {
     this.isOwner = false,
     this.initialIsFavorite = false,
     this.isDarkMode = false,
+    this.isGuestMode = false,
     this.onFavoriteChanged,
   });
 
@@ -3376,8 +3378,29 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                 ],
               )
 
-                  : Column(
-                children: [
+                      : Column(
+                  children: [
+    if (widget.isGuestMode)
+    Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    margin: const EdgeInsets.only(bottom: 10),
+    decoration: BoxDecoration(
+    color: Colors.orange.withValues(alpha: 0.10),
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(color: Colors.orange.shade200),
+    ),
+    child: const Text(
+    'Guest mode: Browse menus and business information only. Sign in to place orders.',
+    textAlign: TextAlign.center,
+    style: TextStyle(
+    fontWeight: FontWeight.w700,
+    color: Colors.black87,
+    ),
+    ),
+    ),
+
+    if (!widget.isGuestMode) ...[
                   Row(
                     children: [
                       Expanded(
@@ -3448,6 +3471,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                     ),
                   ),
                 ],
+                  ],
               ),
             ),
 

@@ -14,11 +14,19 @@ class _WelcomePageState extends State<WelcomePage>
     with TickerProviderStateMixin {
   late AnimationController _floatController;
   late AnimationController _pulseController;
+
   String _languageName() {
     if (AppText.language == 'es') return 'Español';
     if (AppText.language == 'hi') return 'हिन्दी';
     if (AppText.language == 'pa') return 'ਪੰਜਾਬੀ';
     return 'English';
+  }
+
+  String _t(String en, String es, String hi, String pa) {
+    if (AppText.language == 'es') return es;
+    if (AppText.language == 'hi') return hi;
+    if (AppText.language == 'pa') return pa;
+    return en;
   }
 
   @override
@@ -62,9 +70,12 @@ class _WelcomePageState extends State<WelcomePage>
   void _openGuest() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const TruckPage()),
+      MaterialPageRoute(
+        builder: (_) => const TruckPage(isGuestMode: true),
+      ),
     );
   }
+
   void _showLanguageSheet() {
     showModalBottomSheet(
       context: context,
@@ -77,9 +88,17 @@ class _WelcomePageState extends State<WelcomePage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Choose Language',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                _t(
+                  'Choose Language',
+                  'Elegir idioma',
+                  'भाषा चुनें',
+                  'ਭਾਸ਼ਾ ਚੁਣੋ',
+                ),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 16),
               _languageTile('🇺🇸', 'English', 'en'),
@@ -92,6 +111,7 @@ class _WelcomePageState extends State<WelcomePage>
       },
     );
   }
+
   void _showNotifications() {
     showDialog(
       context: context,
@@ -100,25 +120,51 @@ class _WelcomePageState extends State<WelcomePage>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.notifications, color: Colors.deepOrange),
-              SizedBox(width: 8),
-              Text('Notifications'),
+              const Icon(Icons.notifications, color: Colors.deepOrange),
+              const SizedBox(width: 8),
+              Text(
+                _t(
+                  'Notifications',
+                  'Notificaciones',
+                  'सूचनाएं',
+                  'ਸੂਚਨਾਵਾਂ',
+                ),
+              ),
             ],
           ),
-          content: const Text(
-            'Welcome to MapMyBite!\n\n'
-                '• Discover food trucks\n'
-                '• Order from home kitchens\n'
-                '• Track rewards & loyalty\n'
-                '• Get order updates',
-            style: TextStyle(height: 1.4),
+          content: Text(
+            _t(
+              'Welcome to MapMyBite!\n\n'
+                  '• Discover food trucks\n'
+                  '• Order from home kitchens\n'
+                  '• Track rewards & loyalty\n'
+                  '• Get order updates',
+              '¡Bienvenido a MapMyBite!\n\n'
+                  '• Descubre food trucks\n'
+                  '• Ordena de cocinas caseras\n'
+                  '• Sigue recompensas y lealtad\n'
+                  '• Recibe actualizaciones de pedidos',
+              'MapMyBite में आपका स्वागत है!\n\n'
+                  '• फूड ट्रक खोजें\n'
+                  '• होम किचन से ऑर्डर करें\n'
+                  '• रिवॉर्ड और लॉयल्टी ट्रैक करें\n'
+                  '• ऑर्डर अपडेट पाएं',
+              'MapMyBite ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ!\n\n'
+                  '• ਫੂਡ ਟਰੱਕ ਲੱਭੋ\n'
+                  '• ਹੋਮ ਕਿਚਨ ਤੋਂ ਆਰਡਰ ਕਰੋ\n'
+                  '• ਰਿਵਾਰਡ ਅਤੇ ਲੋਇਲਟੀ ਟ੍ਰੈਕ ਕਰੋ\n'
+                  '• ਆਰਡਰ ਅਪਡੇਟ ਲਵੋ',
+            ),
+            style: const TextStyle(height: 1.4),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: Text(
+                _t('Close', 'Cerrar', 'बंद करें', 'ਬੰਦ ਕਰੋ'),
+              ),
             ),
           ],
         );
@@ -130,12 +176,11 @@ class _WelcomePageState extends State<WelcomePage>
     return ListTile(
       leading: Text(flag),
       title: Text(title),
-      onTap: () async {
+      onTap: () {
         setState(() {
           AppText.language = code;
         });
 
-        if (!mounted) return;
         Navigator.pop(context);
       },
     );
@@ -171,33 +216,34 @@ class _WelcomePageState extends State<WelcomePage>
                   wide ? 42 : 14,
                   8,
                   wide ? 42 : 14,
-                  14,
+                  12,
                 ),
                 child: Column(
                   children: [
                     _topBar(),
-                    _hero(
-                      float: float,
-                      pulse: pulse,
-                      wide: wide,
-                    ),
-                    const SizedBox(height: 2),
-                    const Text.rich(
+                    _hero(float: float, pulse: pulse, wide: wide),
+                    const SizedBox(height: 1),
+                    Text.rich(
                       TextSpan(
                         children: [
                           TextSpan(
-                            text: 'Welcome to ',
-                            style: TextStyle(
+                            text: _t(
+                              'Welcome to ',
+                              'Bienvenido a ',
+                              'स्वागत है ',
+                              'ਸਵਾਗਤ ਹੈ ',
+                            ),
+                            style: const TextStyle(
                               color: Colors.black87,
-                              fontSize: 25,
+                              fontSize: 24,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          TextSpan(
+                          const TextSpan(
                             text: 'MapMyBite',
                             style: TextStyle(
                               color: Colors.deepOrange,
-                              fontSize: 25,
+                              fontSize: 24,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -206,16 +252,21 @@ class _WelcomePageState extends State<WelcomePage>
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      'How would you like to continue?',
-                      style: TextStyle(
-                        fontSize: 14,
+                    Text(
+                      _t(
+                        'How would you like to continue?',
+                        '¿Cómo quieres continuar?',
+                        'आप कैसे जारी रखना चाहते हैं?',
+                        'ਤੁਸੀਂ ਕਿਵੇਂ ਜਾਰੀ ਰੱਖਣਾ ਚਾਹੁੰਦੇ ਹੋ?',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13.5,
                         color: Colors.black54,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 10),
-
+                    const SizedBox(height: 8),
                     if (wide)
                       Row(
                         children: [
@@ -226,29 +277,48 @@ class _WelcomePageState extends State<WelcomePage>
                       )
                     else ...[
                       _customerCard(wide: false),
-                      const SizedBox(height: 9),
+                      const SizedBox(height: 7),
                       _ownerCard(wide: false),
                     ],
-
-                    const SizedBox(height: 9),
+                    const SizedBox(height: 7),
                     _guestCard(),
-                    const SizedBox(height: 9),
-                    const Text.rich(
+                    const SizedBox(height: 8),
+                    Text.rich(
                       TextSpan(
-                        text: 'By continuing you agree to our ',
-                        style: TextStyle(color: Colors.black54, fontSize: 11),
+                        text: _t(
+                          'By continuing you agree to our ',
+                          'Al continuar aceptas nuestros ',
+                          'जारी रखकर आप हमारी ',
+                          'ਜਾਰੀ ਰੱਖ ਕੇ ਤੁਸੀਂ ਸਾਡੇ ',
+                        ),
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 10.5,
+                        ),
                         children: [
                           TextSpan(
-                            text: 'Terms of Service',
-                            style: TextStyle(
+                            text: _t(
+                              'Terms of Service',
+                              'Términos de Servicio',
+                              'सेवा शर्तें',
+                              'ਸੇਵਾ ਸ਼ਰਤਾਂ',
+                            ),
+                            style: const TextStyle(
                               color: Colors.deepOrange,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          TextSpan(text: ' & '),
                           TextSpan(
-                            text: 'Privacy Policy',
-                            style: TextStyle(
+                            text: _t(' & ', ' y ', ' और ', ' ਅਤੇ '),
+                          ),
+                          TextSpan(
+                            text: _t(
+                              'Privacy Policy',
+                              'Política de Privacidad',
+                              'गोपनीयता नीति',
+                              'ਪਰਾਈਵੇਸੀ ਨੀਤੀ',
+                            ),
+                            style: const TextStyle(
                               color: Colors.deepOrange,
                               fontWeight: FontWeight.bold,
                             ),
@@ -282,7 +352,10 @@ class _WelcomePageState extends State<WelcomePage>
                 const SizedBox(width: 7),
                 Text(
                   _languageName(),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(width: 6),
                 const Icon(Icons.keyboard_arrow_down, size: 20),
@@ -300,8 +373,11 @@ class _WelcomePageState extends State<WelcomePage>
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications,
-                    color: Colors.deepOrange, size: 22),
+                const Icon(
+                  Icons.notifications,
+                  color: Colors.deepOrange,
+                  size: 22,
+                ),
                 Positioned(
                   top: -4,
                   right: -4,
@@ -328,15 +404,13 @@ class _WelcomePageState extends State<WelcomePage>
     required bool wide,
   }) {
     return SizedBox(
-      height: wide ? 310 : 230,
+      height: wide ? 310 : 222,
       child: Stack(
         alignment: Alignment.center,
         children: [
           Positioned.fill(
             child: CustomPaint(painter: _MapLinesPainter()),
           ),
-
-          // LEFT SIDE ICONS
           Positioned(
             left: wide ? 55 : 10,
             top: wide ? 85 + float : 74 + float,
@@ -352,8 +426,6 @@ class _WelcomePageState extends State<WelcomePage>
             bottom: wide ? 92 - float : 76 - float,
             child: _foodBubble('🍔', wide ? 56 : 44),
           ),
-
-          // RIGHT SIDE ICONS
           Positioned(
             right: wide ? 150 : 48,
             top: wide ? 80 - float : 70 - float,
@@ -369,10 +441,8 @@ class _WelcomePageState extends State<WelcomePage>
             bottom: wide ? 30 - float : 18 - float,
             child: _foodBubble('🧋', wide ? 52 : 42),
           ),
-
-          // CENTER CLEAN LOGO - always on top
           Positioned(
-            top: wide ? 45 : 36,
+            top: wide ? 45 : 34,
             left: 0,
             right: 0,
             child: Transform.scale(
@@ -381,8 +451,8 @@ class _WelcomePageState extends State<WelcomePage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: wide ? 140 : 100,
-                    height: wide ? 140 : 100,
+                    width: wide ? 140 : 96,
+                    height: wide ? 140 : 96,
                     decoration: BoxDecoration(
                       boxShadow: [
                         BoxShadow(
@@ -401,7 +471,7 @@ class _WelcomePageState extends State<WelcomePage>
                       ),
                     ),
                   ),
-                  SizedBox(height: wide ? 12 : 8),
+                  SizedBox(height: wide ? 12 : 7),
                   Text.rich(
                     TextSpan(
                       children: [
@@ -409,7 +479,7 @@ class _WelcomePageState extends State<WelcomePage>
                           text: 'Map',
                           style: TextStyle(
                             color: Colors.black87,
-                            fontSize: wide ? 40 : 30,
+                            fontSize: wide ? 40 : 29,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -417,7 +487,7 @@ class _WelcomePageState extends State<WelcomePage>
                           text: 'My',
                           style: TextStyle(
                             color: Colors.deepOrange,
-                            fontSize: wide ? 40 : 30,
+                            fontSize: wide ? 40 : 29,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -425,7 +495,7 @@ class _WelcomePageState extends State<WelcomePage>
                           text: 'Bite',
                           style: TextStyle(
                             color: Colors.black87,
-                            fontSize: wide ? 40 : 30,
+                            fontSize: wide ? 40 : 29,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -434,9 +504,14 @@ class _WelcomePageState extends State<WelcomePage>
                   ),
                   SizedBox(height: wide ? 4 : 2),
                   Text(
-                    'Discover. Order. Enjoy.',
+                    _t(
+                      'Discover. Order. Enjoy.',
+                      'Descubre. Ordena. Disfruta.',
+                      'खोजें। ऑर्डर करें। आनंद लें।',
+                      'ਲੱਭੋ। ਆਰਡਰ ਕਰੋ। ਆਨੰਦ ਲਵੋ।',
+                    ),
                     style: TextStyle(
-                      fontSize: wide ? 18 : 14,
+                      fontSize: wide ? 18 : 13.5,
                       fontWeight: FontWeight.w700,
                       color: Colors.black87,
                     ),
@@ -455,12 +530,36 @@ class _WelcomePageState extends State<WelcomePage>
       wide: wide,
       borderColor: Colors.deepOrange.shade100,
       badgeColor: Colors.deepOrange,
-      badgeText: 'FOR HUNGRY PEOPLE',
-      title: 'Continue as\nCustomer',
-      description: 'Find verified food trucks & home kitchens near you on a live map.',
+      badgeText: _t(
+        'FOR HUNGRY PEOPLE',
+        'PARA CLIENTES',
+        'ग्राहकों के लिए',
+        'ਗਾਹਕਾਂ ਲਈ',
+      ),
+      title: _t(
+        'Continue as\nCustomer',
+        'Continuar como\nCliente',
+        'ग्राहक के रूप में\nजारी रखें',
+        'ਗਾਹਕ ਵਜੋਂ\nਜਾਰੀ ਰੱਖੋ',
+      ),
+      description: _t(
+        'Find verified food trucks & home kitchens near you on a live map.',
+        'Encuentra food trucks y cocinas caseras verificadas cerca de ti.',
+        'अपने पास सत्यापित फूड ट्रक और होम किचन खोजें।',
+        'ਆਪਣੇ ਨੇੜੇ ਵੈਰੀਫਾਈਡ ਫੂਡ ਟਰੱਕ ਅਤੇ ਹੋਮ ਕਿਚਨ ਲੱਭੋ।',
+      ),
       art: _phoneArt(),
-      chips: const ['📍 Live Map', '✅ Verified Spots', '🛒 Easy Orders'],
-      buttonText: '🍴  Find Food Near Me  →',
+      chips: [
+        _t('📍 Live Map', '📍 Mapa', '📍 मैप', '📍 ਨਕਸ਼ਾ'),
+        _t('✅ Verified Spots', '✅ Verificado', '✅ सत्यापित', '✅ ਵੈਰੀਫਾਈਡ'),
+        _t('🛒 Easy Orders', '🛒 Pedidos', '🛒 ऑर्डर', '🛒 ਆਰਡਰ'),
+      ],
+      buttonText: _t(
+        '🍴  Find Food Near Me  →',
+        '🍴  Buscar comida cerca  →',
+        '🍴  पास में खाना खोजें  →',
+        '🍴  ਨੇੜੇ ਖਾਣਾ ਲੱਭੋ  →',
+      ),
       buttonColor: Colors.deepOrange,
       onTap: _openCustomer,
     );
@@ -471,12 +570,36 @@ class _WelcomePageState extends State<WelcomePage>
       wide: wide,
       borderColor: Colors.green.shade100,
       badgeColor: Colors.green,
-      badgeText: 'FOR FOOD BUSINESSES',
-      title: 'Continue as\nOwner',
-      description: 'List your truck or kitchen, manage menus, orders & payments.',
+      badgeText: _t(
+        'FOR FOOD BUSINESSES',
+        'PARA NEGOCIOS',
+        'फूड बिजनेस के लिए',
+        'ਫੂਡ ਬਿਜ਼ਨਸ ਲਈ',
+      ),
+      title: _t(
+        'Continue as\nOwner',
+        'Continuar como\nDueño',
+        'मालिक के रूप में\nजारी रखें',
+        'ਮਾਲਕ ਵਜੋਂ\nਜਾਰੀ ਰੱਖੋ',
+      ),
+      description: _t(
+        'List your truck or kitchen, manage menus, orders & payments.',
+        'Publica tu negocio y administra menús, pedidos y pagos.',
+        'अपना ट्रक या किचन जोड़ें, मेनू, ऑर्डर और पेमेंट संभालें।',
+        'ਆਪਣਾ ਟਰੱਕ ਜਾਂ ਕਿਚਨ ਜੋੜੋ, ਮੀਨੂ, ਆਰਡਰ ਅਤੇ ਪੇਮੈਂਟ ਸੰਭਾਲੋ।',
+      ),
       art: _tabletArt(),
-      chips: const ['📋 Menu Tools', '📦 Orders & POS', '📈 Analytics'],
-      buttonText: '🏪  Manage My Business  →',
+      chips: [
+        _t('📋 Menu Tools', '📋 Menú', '📋 मेनू', '📋 ਮੀਨੂ'),
+        _t('📦 Orders & POS', '📦 POS', '📦 POS', '📦 POS'),
+        _t('📈 Analytics', '📈 Datos', '📈 एनालिटिक्स', '📈 ਐਨਾਲਿਟਿਕਸ'),
+      ],
+      buttonText: _t(
+        '🏪  Manage My Business  →',
+        '🏪  Administrar negocio  →',
+        '🏪  मेरा बिजनेस संभालें  →',
+        '🏪  ਮੇਰਾ ਬਿਜ਼ਨਸ ਸੰਭਾਲੋ  →',
+      ),
       buttonColor: Colors.green,
       onTap: _openOwner,
     );
@@ -496,7 +619,7 @@ class _WelcomePageState extends State<WelcomePage>
     required VoidCallback onTap,
   }) {
     return Container(
-      padding: EdgeInsets.all(wide ? 18 : 10),
+      padding: EdgeInsets.all(wide ? 18 : 9),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.90),
         borderRadius: BorderRadius.circular(24),
@@ -513,73 +636,77 @@ class _WelcomePageState extends State<WelcomePage>
         children: [
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: wide ? 12 : 9,
-                  vertical: wide ? 7 : 5,
-                ),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Text(
-                  '●  $badgeText',
-                  style: TextStyle(
-                    color: badgeColor,
-                    fontSize: wide ? 11.5 : 10.5,
-                    fontWeight: FontWeight.w900,
+              Flexible(
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: wide ? 12 : 8,
+                    vertical: wide ? 7 : 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Text(
+                    '●  $badgeText',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: badgeColor,
+                      fontSize: wide ? 11.5 : 10.2,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 6),
               SizedBox(
-                width: wide ? 92 : 56,
-                height: wide ? 92 : 52,
+                width: wide ? 92 : 48,
+                height: wide ? 92 : 44,
                 child: art,
               ),
             ],
           ),
-          SizedBox(height: wide ? 8 : 2),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  wide ? title : title.replaceAll('\n', ' '),
-                  style: TextStyle(
-                    fontSize: wide ? 24 : 19,
-                    height: 1.08,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black87,
-                  ),
-                ),
+          SizedBox(height: wide ? 8 : 1),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              wide ? title : title.replaceAll('\n', ' '),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: wide ? 24 : 18,
+                height: 1.05,
+                fontWeight: FontWeight.w900,
+                color: Colors.black87,
               ),
-            ],
+            ),
           ),
-          SizedBox(height: wide ? 9 : 3),
+          SizedBox(height: wide ? 9 : 2),
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
               wide ? description : description.replaceAll(' on a live map.', '.'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.black54,
-                height: 1.28,
-                fontSize: wide ? 14 : 12.7,
+                height: 1.2,
+                fontSize: wide ? 14 : 12.2,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          SizedBox(height: wide ? 12 : 5),
+          SizedBox(height: wide ? 12 : 4),
           Align(
             alignment: Alignment.centerLeft,
             child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: 5,
+              runSpacing: 4,
               children: chips.map((chip) {
                 return Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: wide ? 8 : 7,
-                    vertical: wide ? 5 : 4,
+                    horizontal: wide ? 8 : 6,
+                    vertical: wide ? 5 : 3,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
@@ -588,7 +715,7 @@ class _WelcomePageState extends State<WelcomePage>
                   child: Text(
                     wide ? chip : _shortChip(chip),
                     style: TextStyle(
-                      fontSize: wide ? 10.6 : 10,
+                      fontSize: wide ? 10.6 : 9.5,
                       fontWeight: FontWeight.w800,
                       color: Colors.black54,
                     ),
@@ -597,10 +724,10 @@ class _WelcomePageState extends State<WelcomePage>
               }).toList(),
             ),
           ),
-          SizedBox(height: wide ? 13 : 6),
+          SizedBox(height: wide ? 13 : 5),
           SizedBox(
             width: double.infinity,
-            height: wide ? 52 : 40,
+            height: wide ? 52 : 38,
             child: ElevatedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
@@ -614,8 +741,10 @@ class _WelcomePageState extends State<WelcomePage>
               ),
               child: Text(
                 buttonText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: wide ? 16 : 14.2,
+                  fontSize: wide ? 16 : 13.4,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -631,81 +760,97 @@ class _WelcomePageState extends State<WelcomePage>
         .replaceAll('Verified Spots', 'Verified')
         .replaceAll('Easy Orders', 'Orders')
         .replaceAll('Menu Tools', 'Menu')
-        .replaceAll('Orders & POS', 'POS');
+        .replaceAll('Orders & POS', 'POS')
+        .replaceAll('Verificado', 'Verif.')
+        .replaceAll('Analytics', 'Stats');
   }
 
   Widget _guestCard() {
     return InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: _openGuest,
-        child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.90),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 11,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(15),
+      borderRadius: BorderRadius.circular(20),
+      onTap: _openGuest,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.90),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.orange.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 11,
+              offset: const Offset(0, 5),
             ),
-            child: const Center(
-              child: Text('👀', style: TextStyle(fontSize: 23)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Continue as Guest',
-                  style: TextStyle(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Browse nearby spots without signing up. Limited features.',
-                  style: TextStyle(
-                    color: Colors.black54,
-                    fontWeight: FontWeight.w700,
-                    height: 1.25,
-                    fontSize: 12.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: FloatingActionButton.small(
-              heroTag: 'guestBtn',
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              elevation: 3,
-              onPressed: _openGuest,
-              child: const Icon(Icons.arrow_forward, size: 21),
-            ),
-          ),
-        ],
-      ),
+          ],
         ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Center(
+                child: Text('👀', style: TextStyle(fontSize: 22)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _t(
+                      'Continue as Guest',
+                      'Continuar como invitado',
+                      'गेस्ट के रूप में जारी रखें',
+                      'ਗੈਸਟ ਵਜੋਂ ਜਾਰੀ ਰੱਖੋ',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14.6,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    _t(
+                      'Browse nearby spots without signing up. Limited features.',
+                      'Explora sin registrarte. Funciones limitadas.',
+                      'साइन अप बिना देखें। सीमित सुविधाएं।',
+                      'ਸਾਈਨ ਅਪ ਤੋਂ ਬਿਨਾਂ ਵੇਖੋ। ਸੀਮਿਤ ਫੀਚਰ।',
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                      fontSize: 11.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 38,
+              height: 38,
+              child: FloatingActionButton.small(
+                heroTag: 'guestBtn',
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                elevation: 3,
+                onPressed: _openGuest,
+                child: const Icon(Icons.arrow_forward, size: 20),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -718,11 +863,11 @@ class _WelcomePageState extends State<WelcomePage>
       child: Stack(
         alignment: Alignment.center,
         children: const [
-          Icon(Icons.phone_android, color: Colors.deepOrange, size: 34),
+          Icon(Icons.phone_android, color: Colors.deepOrange, size: 30),
           Positioned(
-            top: 13,
-            right: 15,
-            child: Icon(Icons.location_on, color: Colors.blue, size: 12),
+            top: 10,
+            right: 11,
+            child: Icon(Icons.location_on, color: Colors.blue, size: 11),
           ),
         ],
       ),
@@ -738,11 +883,18 @@ class _WelcomePageState extends State<WelcomePage>
       child: Stack(
         alignment: Alignment.center,
         children: const [
-          Icon(Icons.tablet_mac, color: Colors.green, size: 34),
+          Icon(Icons.tablet_mac, color: Colors.green, size: 30),
           Positioned(
-            top: 10,
-            right: 12,
-            child: Text('24', style: TextStyle(fontSize: 10, color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+            top: 8,
+            right: 9,
+            child: Text(
+              '24',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.deepOrange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),

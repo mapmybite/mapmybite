@@ -18,10 +18,12 @@ import 'favorite_data.dart';
 
 class TruckPage extends StatefulWidget {
   final bool openOwnerPortalOnStart;
+  final bool isGuestMode;
 
   const TruckPage({
     super.key,
     this.openOwnerPortalOnStart = false,
+    this.isGuestMode = false,
   });
 
   @override
@@ -701,6 +703,7 @@ class _TruckPageState extends State<TruckPage> {
       MaterialPageRoute(
         builder: (context) => TruckProfilePage(
           truck: item,
+          isGuestMode: widget.isGuestMode,
           isOwner: _ownerBusiness != null &&
               _ownerBusiness!['id'].toString() == item['id'].toString(),
           initialIsFavorite: FavoriteData.isFavorite(item),

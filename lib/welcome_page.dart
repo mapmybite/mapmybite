@@ -14,6 +14,14 @@ class _WelcomePageState extends State<WelcomePage>
     with TickerProviderStateMixin {
   late AnimationController _floatController;
   late AnimationController _pulseController;
+  bool _isDarkMode = false;
+
+  Color get _welcomeBg1 => _isDarkMode ? Colors.black : const Color(0xFFFFF7EF);
+  Color get _welcomeBg2 => _isDarkMode ? Colors.grey.shade900 : const Color(0xFFFFEFE5);
+  Color get _welcomeBg3 => _isDarkMode ? Colors.black : Colors.white;
+  Color get _cardColor => _isDarkMode ? Colors.grey.shade900 : Colors.white.withValues(alpha: 0.90);
+  Color get _mainText => _isDarkMode ? Colors.white : Colors.black87;
+  Color get _subText => _isDarkMode ? Colors.grey.shade300 : Colors.black54;
 
   String _languageName() {
     if (AppText.language == 'es') return 'Español';
@@ -199,12 +207,12 @@ class _WelcomePageState extends State<WelcomePage>
           final pulse = 1 + (_pulseController.value * 0.035);
 
           return Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFFFFF7EF),
-                  Color(0xFFFFEFE5),
-                  Color(0xFFFFFFFF),
+                  _welcomeBg1,
+                  _welcomeBg2,
+                  _welcomeBg3,
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -233,8 +241,8 @@ class _WelcomePageState extends State<WelcomePage>
                               'स्वागत है ',
                               'ਸਵਾਗਤ ਹੈ ',
                             ),
-                            style: const TextStyle(
-                              color: Colors.black87,
+                            style: TextStyle(
+                              color: _mainText,
                               fontSize: 24,
                               fontWeight: FontWeight.w900,
                             ),
@@ -260,9 +268,9 @@ class _WelcomePageState extends State<WelcomePage>
                         'ਤੁਸੀਂ ਕਿਵੇਂ ਜਾਰੀ ਰੱਖਣਾ ਚਾਹੁੰਦੇ ਹੋ?',
                       ),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13.5,
-                        color: Colors.black54,
+                        color: _subText,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -291,8 +299,8 @@ class _WelcomePageState extends State<WelcomePage>
                           'जारी रखकर आप हमारी ',
                           'ਜਾਰੀ ਰੱਖ ਕੇ ਤੁਸੀਂ ਸਾਡੇ ',
                         ),
-                        style: const TextStyle(
-                          color: Colors.black54,
+                        style: TextStyle(
+                          color: _subText,
                           fontSize: 10.5,
                         ),
                         children: [
@@ -364,6 +372,25 @@ class _WelcomePageState extends State<WelcomePage>
           ),
         ),
         const Spacer(),
+
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            setState(() {
+              _isDarkMode = !_isDarkMode;
+            });
+          },
+          child: Container(
+            margin: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.all(10),
+            decoration: _softBox(),
+            child: Icon(
+              _isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              color: _isDarkMode ? Colors.yellow : Colors.black87,
+              size: 22,
+            ),
+          ),
+        ),
         InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: _showNotifications,
@@ -478,7 +505,7 @@ class _WelcomePageState extends State<WelcomePage>
                         TextSpan(
                           text: 'Map',
                           style: TextStyle(
-                            color: Colors.black87,
+                            color: _mainText,
                             fontSize: wide ? 40 : 29,
                             fontWeight: FontWeight.w900,
                           ),
@@ -494,7 +521,7 @@ class _WelcomePageState extends State<WelcomePage>
                         TextSpan(
                           text: 'Bite',
                           style: TextStyle(
-                            color: Colors.black87,
+                            color: _mainText,
                             fontSize: wide ? 40 : 29,
                             fontWeight: FontWeight.w900,
                           ),
@@ -513,7 +540,7 @@ class _WelcomePageState extends State<WelcomePage>
                     style: TextStyle(
                       fontSize: wide ? 18 : 13.5,
                       fontWeight: FontWeight.w700,
-                      color: Colors.black87,
+                      color: _mainText,
                     ),
                   ),
                 ],
@@ -621,7 +648,7 @@ class _WelcomePageState extends State<WelcomePage>
     return Container(
       padding: EdgeInsets.all(wide ? 18 : 9),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.90),
+        color: _cardColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: borderColor, width: 1.3),
         boxShadow: [
@@ -677,7 +704,7 @@ class _WelcomePageState extends State<WelcomePage>
                 fontSize: wide ? 24 : 18,
                 height: 1.05,
                 fontWeight: FontWeight.w900,
-                color: Colors.black87,
+                color: _mainText,
               ),
             ),
           ),
@@ -689,7 +716,7 @@ class _WelcomePageState extends State<WelcomePage>
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: Colors.black54,
+                color: _subText,
                 height: 1.2,
                 fontSize: wide ? 14 : 12.2,
                 fontWeight: FontWeight.w700,
@@ -709,7 +736,9 @@ class _WelcomePageState extends State<WelcomePage>
                     vertical: wide ? 5 : 3,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: _isDarkMode
+                        ? Colors.grey.shade800
+                        : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
@@ -717,7 +746,7 @@ class _WelcomePageState extends State<WelcomePage>
                     style: TextStyle(
                       fontSize: wide ? 10.6 : 9.5,
                       fontWeight: FontWeight.w800,
-                      color: Colors.black54,
+                      color: _subText,
                     ),
                   ),
                 );
@@ -772,7 +801,7 @@ class _WelcomePageState extends State<WelcomePage>
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.90),
+          color: _cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.orange.shade100),
           boxShadow: [
@@ -810,10 +839,10 @@ class _WelcomePageState extends State<WelcomePage>
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14.6,
                       fontWeight: FontWeight.w900,
-                      color: Colors.black87,
+                      color: _mainText,
                     ),
                   ),
                   const SizedBox(height: 1),
@@ -826,8 +855,8 @@ class _WelcomePageState extends State<WelcomePage>
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.black54,
+                    style: TextStyle(
+                      color: _subText,
                       fontWeight: FontWeight.w700,
                       height: 1.2,
                       fontSize: 11.6,

@@ -20,6 +20,8 @@ class TruckPage extends StatefulWidget {
   final bool openOwnerPortalOnStart;
   final bool isGuestMode;
 
+  static final ValueNotifier<bool> listViewNotifier =
+  ValueNotifier<bool>(false);
   const TruckPage({
     super.key,
     this.openOwnerPortalOnStart = false,
@@ -1436,6 +1438,7 @@ class _TruckPageState extends State<TruckPage> {
                           onChanged: (value) {
                             setState(() {
                               _isListView = value;
+                              TruckPage.listViewNotifier.value = value;
                             });
                           },
                         ),

@@ -81,6 +81,46 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     await _flutterTts.setPitch(1.35);
     await _flutterTts.speak(message);
   }
+  Future<void> _readCurrentScreen() async {
+    if (_selectedIndex == 0 &&
+        !TruckPage.listViewNotifier.value) {
+      await _speakChuchuMessage(
+        en: 'You are on the Map page. Here you can search for food trucks, home kitchens, open places, favorites, and nearby food.',
+        es: 'Estás en la página del mapa. Aquí puedes buscar food trucks, cocinas caseras, lugares abiertos, favoritos y comida cercana.',
+        hi: 'आप मैप पेज पर हैं। यहाँ आप फूड ट्रक, होम किचन, खुले हुए स्थान, पसंदीदा जगह और पास का खाना खोज सकते हैं।',
+        pa: 'ਤੁਸੀਂ ਨਕਸ਼ਾ ਪੇਜ ਤੇ ਹੋ। ਇੱਥੇ ਤੁਸੀਂ ਫੂਡ ਟਰੱਕ, ਘਰੇਲੂ ਰਸੋਈਆਂ, ਖੁੱਲ੍ਹੀਆਂ ਥਾਵਾਂ, ਮਨਪਸੰਦ ਅਤੇ ਨੇੜੇ ਦਾ ਖਾਣਾ ਲੱਭ ਸਕਦੇ ਹੋ।',
+      );
+    } else if (_selectedIndex == 0 &&
+        TruckPage.listViewNotifier.value) {
+      await _speakChuchuMessage(
+        en: 'You are viewing the food list. Here you can browse nearby food trucks and home kitchens in list mode.',
+        es: 'Estás viendo la lista de comida. Aquí puedes explorar food trucks y cocinas caseras cercanas en modo lista.',
+        hi: 'आप फूड लिस्ट देख रहे हैं। यहाँ आप पास के फूड ट्रक और होम किचन लिस्ट मोड में देख सकते हैं।',
+        pa: 'ਤੁਸੀਂ ਖਾਣੇ ਦੀ ਲਿਸਟ ਵੇਖ ਰਹੇ ਹੋ। ਇੱਥੇ ਤੁਸੀਂ ਨੇੜਲੇ ਫੂਡ ਟਰੱਕ ਅਤੇ ਘਰੇਲੂ ਰਸੋਈਆਂ ਲਿਸਟ ਮੋਡ ਵਿੱਚ ਵੇਖ ਸਕਦੇ ਹੋ।',
+      );
+    } else if (_selectedIndex == 1) {
+      await _speakChuchuMessage(
+        en: 'You are on the Rewards page. Rewards and loyalty points will be shown here soon.',
+        es: 'Estás en la página de recompensas. Tus recompensas y puntos aparecerán aquí pronto.',
+        hi: 'आप रिवॉर्ड पेज पर हैं। आपके रिवॉर्ड और लॉयल्टी पॉइंट यहाँ जल्द दिखेंगे।',
+        pa: 'ਤੁਸੀਂ ਰਿਵਾਰਡ ਪੇਜ ਤੇ ਹੋ। ਤੁਹਾਡੇ ਰਿਵਾਰਡ ਅਤੇ ਲੋਇਲਟੀ ਪੁਆਇੰਟ ਜਲਦੀ ਇੱਥੇ ਦਿਖਣਗੇ।',
+      );
+    } else if (_selectedIndex == 2) {
+      await _speakChuchuMessage(
+        en: 'You are on the Orders page. Here you can check your food order history and order status.',
+        es: 'Estás en la página de pedidos. Aquí puedes revisar tu historial de pedidos y el estado de tus órdenes.',
+        hi: 'आप ऑर्डर पेज पर हैं। यहाँ आप अपने खाने के ऑर्डर की हिस्ट्री और स्टेटस देख सकते हैं।',
+        pa: 'ਤੁਸੀਂ ਆਰਡਰ ਪੇਜ ਤੇ ਹੋ। ਇੱਥੇ ਤੁਸੀਂ ਆਪਣੇ ਖਾਣੇ ਦੇ ਆਰਡਰ ਦੀ ਹਿਸਟਰੀ ਅਤੇ ਸਟੇਟਸ ਵੇਖ ਸਕਦੇ ਹੋ।',
+      );
+    } else {
+      await _speakChuchuMessage(
+        en: 'You are on the Profile page. Here you can manage favorites, language, help, and account options.',
+        es: 'Estás en la página de perfil. Aquí puedes manejar favoritos, idioma, ayuda y opciones de cuenta.',
+        hi: 'आप प्रोफाइल पेज पर हैं। यहाँ आप पसंदीदा, भाषा, मदद और अकाउंट विकल्प संभाल सकते हैं।',
+        pa: 'ਤੁਸੀਂ ਪ੍ਰੋਫਾਈਲ ਪੇਜ ਤੇ ਹੋ। ਇੱਥੇ ਤੁਸੀਂ ਮਨਪਸੰਦ, ਭਾਸ਼ਾ, ਮਦਦ ਅਤੇ ਅਕਾਊਂਟ ਵਿਕਲਪ ਸੰਭਾਲ ਸਕਦੇ ਹੋ।',
+      );
+    }
+  }
 
   List<Widget> get _pages => [
     TruckPage(key: ValueKey(_mapRefreshKey)),
@@ -155,6 +195,14 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                             hi: 'ऑर्डर पेज आपको अपने नए और पुराने खाने के ऑर्डर देखने में मदद करता है।',
                             pa: 'ਆਰਡਰ ਪੇਜ ਤੁਹਾਨੂੰ ਆਪਣੇ ਨਵੇਂ ਅਤੇ ਪੁਰਾਣੇ ਖਾਣੇ ਦੇ ਆਰਡਰ ਵੇਖਣ ਵਿੱਚ ਮਦਦ ਕਰਦਾ ਹੈ।',
                           );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.chrome_reader_mode),
+                        title: const Text('Read This Screen'),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          await _readCurrentScreen();
                         },
                       ),
 

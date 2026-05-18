@@ -1,13 +1,19 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 class AppText {
+  static final ValueNotifier<String> languageNotifier =
+  ValueNotifier<String>('en');
   static String language = 'en';
   static Future<void> loadLanguage() async {
     final prefs = await SharedPreferences.getInstance();
     language = prefs.getString('app_language') ?? 'en';
+    languageNotifier.value = language;
   }
 
   static Future<void> setLanguage(String newLanguage) async {
     language = newLanguage;
+    languageNotifier.value = newLanguage;
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_language', newLanguage);
   }

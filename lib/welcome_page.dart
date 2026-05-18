@@ -187,12 +187,12 @@ class _WelcomePageState extends State<WelcomePage>
     return ListTile(
       leading: Text(flag),
       title: Text(title),
-      onTap: () {
-        setState(() {
-          AppText.language = code;
-        });
+      onTap: () async {
+        await AppText.setLanguage(code);
 
-        Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+        }
       },
     );
   }
@@ -277,7 +277,7 @@ class _WelcomePageState extends State<WelcomePage>
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 42),
+                    const SizedBox(height: 56),
                     if (wide)
                       Row(
                         children: [

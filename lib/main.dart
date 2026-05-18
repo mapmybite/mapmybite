@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'welcome_page.dart';
 import 'app_text.dart';
@@ -50,9 +52,30 @@ class MapMyBiteApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: const WelcomePage(),
+    return ValueListenableBuilder<String>(
+      valueListenable: AppText.languageNotifier,
+      builder: (context, language, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+
+          locale: Locale(language),
+
+          supportedLocales: const [
+            Locale('en'),
+            Locale('es'),
+            Locale('hi'),
+            Locale('pa'),
+          ],
+
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+
+          home: const WelcomePage(),
+        );
+      },
     );
   }
 }

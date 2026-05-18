@@ -48,6 +48,39 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     await _flutterTts.setPitch(1.35);
     await _flutterTts.speak(message);
   }
+  Future<void> _stopChuchu() async {
+    await _flutterTts.stop();
+  }
+  Future<void> _speakChuchuMessage({
+    required String en,
+    required String es,
+    required String hi,
+    required String pa,
+  }) async {
+    String message;
+
+    switch (AppText.language) {
+      case 'es':
+        message = es;
+        await _flutterTts.setLanguage('es-ES');
+        break;
+      case 'hi':
+        message = hi;
+        await _flutterTts.setLanguage('hi-IN');
+        break;
+      case 'pa':
+        message = pa;
+        await _flutterTts.setLanguage('pa-IN');
+        break;
+      default:
+        message = en;
+        await _flutterTts.setLanguage('en-US');
+    }
+
+    await _flutterTts.setSpeechRate(0.38);
+    await _flutterTts.setPitch(1.35);
+    await _flutterTts.speak(message);
+  }
 
   List<Widget> get _pages => [
     TruckPage(key: ValueKey(_mapRefreshKey)),
@@ -60,7 +93,86 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: GestureDetector(
-        onTap: _speakChuchu,
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.white,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+            ),
+            builder: (context) {
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Chuchu Assistant',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      ListTile(
+                        leading: const Icon(Icons.record_voice_over),
+                        title: const Text('Welcome Help'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _speakChuchu();
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(Icons.map),
+                        title: const Text('Explain Map'),
+                        onTap: () async {
+                          Navigator.pop(context);
+
+                          await _speakChuchuMessage(
+                            en: 'The map helps you discover nearby food trucks and home kitchens.',
+                            es: 'El mapa te ayuda a descubrir food trucks y cocinas caseras cerca de ti.',
+                            hi: 'मैप आपको पास के फूड ट्रक और होम किचन ढूंढने में मदद करता है।',
+                            pa: 'ਨਕਸ਼ਾ ਤੁਹਾਨੂੰ ਨੇੜਲੇ ਫੂਡ ਟਰੱਕ ਅਤੇ ਘਰੇਲੂ ਰਸੋਈਆਂ ਲੱਭਣ ਵਿੱਚ ਮਦਦ ਕਰਦਾ ਹੈ।',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(Icons.receipt_long),
+                        title: const Text('Explain Orders'),
+                        onTap: () async {
+                          Navigator.pop(context);
+
+                          await _speakChuchuMessage(
+                            en: 'Orders page helps you track your current and previous food orders.',
+                            es: 'La página de pedidos te ayuda a ver tus pedidos actuales y anteriores.',
+                            hi: 'ऑर्डर पेज आपको अपने नए और पुराने खाने के ऑर्डर देखने में मदद करता है।',
+                            pa: 'ਆਰਡਰ ਪੇਜ ਤੁਹਾਨੂੰ ਆਪਣੇ ਨਵੇਂ ਅਤੇ ਪੁਰਾਣੇ ਖਾਣੇ ਦੇ ਆਰਡਰ ਵੇਖਣ ਵਿੱਚ ਮਦਦ ਕਰਦਾ ਹੈ।',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(Icons.stop_circle),
+                        title: const Text('Stop Talking'),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          await _stopChuchu();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.95, end: 1.05),
           duration: const Duration(seconds: 2),

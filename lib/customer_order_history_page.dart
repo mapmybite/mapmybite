@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'order_data.dart';
 
-class CustomerOrderHistoryPage extends StatelessWidget {
+class CustomerOrderHistoryPage extends StatefulWidget {
   const CustomerOrderHistoryPage({super.key});
 
-  List<Map<String, dynamic>> _getOrders() {
-    return OrderData.getCustomerOrders();
+  @override
+  State<CustomerOrderHistoryPage> createState() =>
+      _CustomerOrderHistoryPageState();
   }
+
+  class _CustomerOrderHistoryPageState extends State<CustomerOrderHistoryPage> {
+    List<Map<String, dynamic>> _getOrders() {
+      return OrderData.getCustomerOrders();
+    }
 
   dynamic _pickFirstValue(Map<String, dynamic> order, List<String> keys) {
     for (final key in keys) {

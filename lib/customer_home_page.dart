@@ -17,6 +17,7 @@ class CustomerHomePage extends StatefulWidget {
 class _CustomerHomePageState extends State<CustomerHomePage> {
   int _selectedIndex = 0;
   int _mapRefreshKey = 0;
+  int _ordersRefreshKey = 0;
   final FlutterTts _flutterTts = FlutterTts();
 
   Future<void> _speakChuchu() async {
@@ -125,7 +126,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   List<Widget> get _pages => [
     TruckPage(key: ValueKey(_mapRefreshKey)),
     const _RewardsPlaceholderPage(),
-    const CustomerOrderHistoryPage(),
+    CustomerOrderHistoryPage(key: ValueKey('orders_$_ordersRefreshKey')),
     const CustomerProfilePage(),
   ];
 
@@ -304,6 +305,10 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
           setState(() {
             if (index == 0) {
               _mapRefreshKey++;
+            }
+
+            if (index == 2) {
+              _ordersRefreshKey++;
             }
 
             _selectedIndex = index;

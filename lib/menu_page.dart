@@ -22,6 +22,8 @@ class MenuPage extends StatefulWidget {
 class _MenuPageState extends State<MenuPage> {
   final Map<String, int> cart = {};
   final FlutterTts _chuchuTts = FlutterTts();
+  String _speakingItemId = '';
+  bool _isSpeaking = false;
 
   bool get _isDarkMode => widget.isDarkMode;
   Color get _pageBg => _isDarkMode ? Colors.black : const Color(0xFFFFF7FC);
@@ -35,26 +37,62 @@ class _MenuPageState extends State<MenuPage> {
   @override
   void initState() {
     super.initState();
-    _setupChuchuVoice();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!widget.isOwnerView && mounted) {
-        _speakChuchu(_buildMenuIntroText());
-      }
-    });
+    _setupMenuVoice();
   }
 
-  Future<void> _setupChuchuVoice() async {
+  Future<void> _setupMenuVoice() async {
     await _chuchuTts.setLanguage('en-US');
     await _chuchuTts.setSpeechRate(0.43);
     await _chuchuTts.setPitch(1.18);
     await _chuchuTts.setVolume(1.0);
   }
 
-  Future<void> _speakChuchu(String text) async {
+  Future<void> _toggleSpeakItem(String itemId, String text) async {
     final clean = text.trim();
+
     if (clean.isEmpty) return;
+
+    if (_isSpeaking && _speakingItemId == itemId) {
+      await _chuchuTts.stop();
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSpeaking = false;
+        _speakingItemId = '';
+      });
+
+      return;
+    }
+
     await _chuchuTts.stop();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSpeaking = true;
+      _speakingItemId = itemId;
+    });
+
     await _chuchuTts.speak(clean);
+
+    _chuchuTts.setCompletionHandler(() {
+      if (!mounted) return;
+
+      setState(() {
+        _isSpeaking = false;
+        _speakingItemId = '';
+      });
+    });
+
+    _chuchuTts.setCancelHandler(() {
+      if (!mounted) return;
+
+      setState(() {
+        _isSpeaking = false;
+        _speakingItemId = '';
+      });
+    });
   }
 
   String _buildMenuIntroText() {
@@ -291,7 +329,12 @@ class _MenuPageState extends State<MenuPage> {
                   Expanded(child: Text(itemName)),
                   IconButton(
                     tooltip: 'Chuchu read item',
-                    onPressed: () => _speakChuchu(_buildItemSpeech(item)),
+                    onPressed: () => _toggleSpeakItem(
+                                       item['id'].toString().isNotEmpty
+                                           ? item['id'].toString()
+                                           : item['name'].toString(),
+                                       _buildItemSpeech(item),
+                                     ),
                     icon: const Icon(Icons.volume_up, color: Colors.orange),
                   ),
                 ],
@@ -423,7 +466,10 @@ class _MenuPageState extends State<MenuPage> {
                       cart[cartKey] = (cart[cartKey] ?? 0) + quantity;
                     });
 
-                    _speakChuchu('$displayName added to your order.');
+                    _toggleSpeakItem(
+                      displayName,
+                      '$displayName added to your order.',
+                    );
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -821,7 +867,12 @@ class _MenuPageState extends State<MenuPage> {
             IconButton(
               tooltip: 'Chuchu read item',
               visualDensity: VisualDensity.compact,
-              onPressed: () => _speakChuchu(_buildItemSpeech(item)),
+              onPressed: () => _toggleSpeakItem(
+                                 item['id'].toString().isNotEmpty
+                                     ? item['id'].toString()
+                                     : item['name'].toString(),
+                                 _buildItemSpeech(item),
+                               ),
               icon: Icon(
                 Icons.volume_up,
                 size: compact ? 20 : 22,
@@ -972,7 +1023,10 @@ class _MenuPageState extends State<MenuPage> {
                   tooltip: 'Chuchu read category',
                   onPressed: () {
                     final text = items.map(_buildItemSpeech).join(' Next item. ');
-                    _speakChuchu('$category. $text');
+                    _toggleSpeakItem(
+                      category,
+                      '$category. $text',
+                    );
                   },
                   icon: const Icon(Icons.record_voice_over, color: Colors.orange),
                 ),
@@ -1083,13 +1137,7 @@ class _MenuPageState extends State<MenuPage> {
         foregroundColor: _primaryText,
         elevation: 0,
         title: Text(widget.truck['title'] ?? 'Menu'),
-        actions: [
-          IconButton(
-            tooltip: 'Chuchu read menu',
-            onPressed: () => _speakChuchu(_buildMenuIntroText()),
-            icon: const Icon(Icons.record_voice_over, color: Colors.orange),
-          ),
-        ],
+
       ),
       body: Column(
         children: [
@@ -1108,7 +1156,10 @@ class _MenuPageState extends State<MenuPage> {
                 ),
                 if (!widget.isOwnerView)
                   TextButton.icon(
-                    onPressed: () => _speakChuchu(_buildMenuIntroText()),
+                    onPressed: () => _toggleSpeakItem(
+                      'menu_intro',
+                      _buildMenuIntroText(),
+                    ),
                     icon: const Icon(Icons.volume_up, color: Colors.orange),
                     label: const Text('Chuchu'),
                   ),
@@ -1171,7 +1222,10 @@ class _MenuPageState extends State<MenuPage> {
                     onPressed: total == 0
                         ? null
                         : () {
-                      _speakChuchu('Your order has $totalItemsSelected items. Total is ${total.toStringAsFixed(2)} dollars.');
+                     _toggleSpeakItem(
+                       'order_summary',
+                       'Your order has $totalItemsSelected items. Total is ${total.toStringAsFixed(2)} dollars.',
+                     );
                       Navigator.pop(context, {
                         'cart': cart,
                         'orderItems': _buildOrderItemsForReturn(),

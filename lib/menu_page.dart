@@ -43,6 +43,7 @@ class _MenuPageState extends State<MenuPage> {
               'noItems': 'Todavía no hay artículos disponibles.',
               'included': 'Incluido',
               'canRemove': 'Se puede quitar',
+              'addOns': 'Extras',
               'selectedItems': 'Artículos seleccionados',
               'total': 'Total',
               'addToOrder': 'Agregar al pedido',
@@ -56,6 +57,7 @@ class _MenuPageState extends State<MenuPage> {
               'noItems': 'अभी कोई मेन्यू आइटम उपलब्ध नहीं है।',
               'included': 'शामिल',
               'canRemove': 'हटा सकते हैं',
+              'addOns': 'ऐड-ऑन',
               'selectedItems': 'चुने गए आइटम',
               'total': 'कुल',
               'addToOrder': 'ऑर्डर में जोड़ें',
@@ -69,6 +71,7 @@ class _MenuPageState extends State<MenuPage> {
               'noItems': 'ਹਾਲੇ ਕੋਈ ਮੈਨੂ ਆਈਟਮ ਉਪਲਬਧ ਨਹੀਂ।',
               'included': 'ਸ਼ਾਮਲ',
               'canRemove': 'ਹਟਾ ਸਕਦੇ ਹੋ',
+              'addOns': 'ਐਡ-ਆਨ',
               'selectedItems': 'ਚੁਣੀਆਂ ਆਈਟਮਾਂ',
               'total': 'ਕੁੱਲ',
               'addToOrder': 'ਆਰਡਰ ਵਿੱਚ ਜੋੜੋ',
@@ -82,6 +85,7 @@ class _MenuPageState extends State<MenuPage> {
               'noItems': 'No available menu items yet.',
               'included': 'Included',
               'canRemove': 'Can remove',
+              'addOns': 'Add-ons',
               'selectedItems': 'Selected Items',
               'total': 'Total',
               'addToOrder': 'Add to Order',
@@ -229,13 +233,74 @@ class _MenuPageState extends State<MenuPage> {
           parts.add('Price is ${price.toStringAsFixed(2)} dollars.');
       }
     }
-    if (description.isNotEmpty) parts.add(description);
-    if (includedItems.isNotEmpty) parts.add('Included: ${includedItems.join(', ')}.');
-    if (removableOptions.isNotEmpty) parts.add('You can remove: ${removableOptions.join(', ')}.');
-    if (addOns.isNotEmpty) {
-      parts.add('Add ons available: ${addOns.map((e) => e['name'].toString()).join(', ')}.');
+    if (description.isNotEmpty) {
+      parts.add(description);
     }
-    parts.add('Tap plus to customize and add this item to your order.');
+
+    if (includedItems.isNotEmpty) {
+      switch (AppText.language) {
+        case 'es':
+          parts.add('Incluido: ${includedItems.join(', ')}.');
+          break;
+        case 'hi':
+          parts.add('शामिल है: ${includedItems.join(', ')}।');
+          break;
+        case 'pa':
+          parts.add('ਸ਼ਾਮਲ ਹੈ: ${includedItems.join(', ')}।');
+          break;
+        default:
+          parts.add('Included: ${includedItems.join(', ')}.');
+      }
+    }
+
+    if (removableOptions.isNotEmpty) {
+      switch (AppText.language) {
+        case 'es':
+          parts.add('Puedes quitar: ${removableOptions.join(', ')}.');
+          break;
+        case 'hi':
+          parts.add('आप हटा सकते हैं: ${removableOptions.join(', ')}।');
+          break;
+        case 'pa':
+          parts.add('ਤੁਸੀਂ ਹਟਾ ਸਕਦੇ ਹੋ: ${removableOptions.join(', ')}।');
+          break;
+        default:
+          parts.add('You can remove: ${removableOptions.join(', ')}.');
+      }
+    }
+
+    if (addOns.isNotEmpty) {
+      final addOnNames =
+          addOns.map((e) => e['name'].toString()).join(', ');
+
+      switch (AppText.language) {
+        case 'es':
+          parts.add('Extras disponibles: $addOnNames.');
+          break;
+        case 'hi':
+          parts.add('उपलब्ध ऐड-ऑन: $addOnNames।');
+          break;
+        case 'pa':
+          parts.add('ਉਪਲਬਧ ਐਡ-ਆਨ: $addOnNames।');
+          break;
+        default:
+          parts.add('Add ons available: $addOnNames.');
+      }
+    }
+
+    switch (AppText.language) {
+      case 'es':
+        parts.add('Toca más para personalizar y agregar este artículo.');
+        break;
+      case 'hi':
+        parts.add('इस आइटम को कस्टमाइज़ करके जोड़ने के लिए प्लस दबाएं।');
+        break;
+      case 'pa':
+        parts.add('ਇਸ ਆਈਟਮ ਨੂੰ ਕਸਟਮਾਈਜ਼ ਕਰਕੇ ਜੋੜਣ ਲਈ ਪਲੱਸ ਦਬਾਓ।');
+        break;
+      default:
+        parts.add('Tap plus to customize and add this item to your order.');
+    }
 
     return parts.join(' ');
   }
@@ -1047,7 +1112,7 @@ class _MenuPageState extends State<MenuPage> {
                 const SizedBox(height: 6),
               ],
               if (addOns.isNotEmpty) ...[
-                _buildSectionLabel('Add-ons', compact: compact),
+                _buildSectionLabel(_txt('addOns'), compact: compact),
                 Wrap(
                   children: addOns.map((addOn) {
                     final String addOnName = (addOn['name'] ?? '').toString();

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'app_text.dart';
 
 class MenuPage extends StatefulWidget {
   final Map<String, dynamic> truck;
@@ -33,6 +34,62 @@ class _MenuPageState extends State<MenuPage> {
       _isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
   Color get _borderColor =>
       _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
+      String _txt(String key) {
+        switch (AppText.language) {
+          case 'es':
+            return {
+              'tapSpeaker': 'Toca 🔊 en cualquier menú para escucharlo. Toca otra vez para detener.',
+              'ownerMenuHint': 'Menú POS del dueño. Gira tu teléfono/tableta para ver 2–3 artículos por fila.',
+              'noItems': 'Todavía no hay artículos disponibles.',
+              'included': 'Incluido',
+              'canRemove': 'Se puede quitar',
+              'selectedItems': 'Artículos seleccionados',
+              'total': 'Total',
+              'addToOrder': 'Agregar al pedido',
+              'added': 'Agregado',
+              'tapAdd': 'Toca + para agregar',
+            }[key] ?? key;
+          case 'hi':
+            return {
+              'tapSpeaker': 'किसी भी मेन्यू कार्ड को सुनने के लिए 🔊 दबाएं। रोकने के लिए फिर दबाएं।',
+              'ownerMenuHint': 'ओनर POS मेन्यू। 2–3 आइटम ग्रिड देखने के लिए फोन/टैबलेट घुमाएं।',
+              'noItems': 'अभी कोई मेन्यू आइटम उपलब्ध नहीं है।',
+              'included': 'शामिल',
+              'canRemove': 'हटा सकते हैं',
+              'selectedItems': 'चुने गए आइटम',
+              'total': 'कुल',
+              'addToOrder': 'ऑर्डर में जोड़ें',
+              'added': 'जोड़ा गया',
+              'tapAdd': '+ दबाकर आइटम जोड़ें',
+            }[key] ?? key;
+          case 'pa':
+            return {
+              'tapSpeaker': 'ਕਿਸੇ ਵੀ ਮੈਨੂ ਕਾਰਡ ਨੂੰ ਸੁਣਨ ਲਈ 🔊 ਦਬਾਓ। ਰੋਕਣ ਲਈ ਮੁੜ ਦਬਾਓ।',
+              'ownerMenuHint': 'ਓਨਰ POS ਮੈਨੂ। 2–3 ਆਈਟਮ ਗ੍ਰਿਡ ਵੇਖਣ ਲਈ ਫੋਨ/ਟੈਬਲੈਟ ਘੁਮਾਓ।',
+              'noItems': 'ਹਾਲੇ ਕੋਈ ਮੈਨੂ ਆਈਟਮ ਉਪਲਬਧ ਨਹੀਂ।',
+              'included': 'ਸ਼ਾਮਲ',
+              'canRemove': 'ਹਟਾ ਸਕਦੇ ਹੋ',
+              'selectedItems': 'ਚੁਣੀਆਂ ਆਈਟਮਾਂ',
+              'total': 'ਕੁੱਲ',
+              'addToOrder': 'ਆਰਡਰ ਵਿੱਚ ਜੋੜੋ',
+              'added': 'ਜੋੜਿਆ',
+              'tapAdd': '+ ਦਬਾ ਕੇ ਆਈਟਮ ਜੋੜੋ',
+            }[key] ?? key;
+          default:
+            return {
+              'tapSpeaker': 'Tap 🔊 on any menu card to read it. Tap again to stop.',
+              'ownerMenuHint': 'Owner POS menu. Rotate your phone/tablet for 2–3 item grid view.',
+              'noItems': 'No available menu items yet.',
+              'included': 'Included',
+              'canRemove': 'Can remove',
+              'selectedItems': 'Selected Items',
+              'total': 'Total',
+              'addToOrder': 'Add to Order',
+              'added': 'Added',
+              'tapAdd': 'Tap + to add item',
+            }[key] ?? key;
+        }
+      }
 
   @override
   void initState() {
@@ -41,7 +98,20 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   Future<void> _setupMenuVoice() async {
-    await _chuchuTts.setLanguage('en-US');
+    switch (AppText.language) {
+      case 'es':
+        await _chuchuTts.setLanguage('es-ES');
+        break;
+      case 'hi':
+        await _chuchuTts.setLanguage('hi-IN');
+        break;
+      case 'pa':
+        await _chuchuTts.setLanguage('pa-IN');
+        break;
+      default:
+        await _chuchuTts.setLanguage('en-US');
+    }
+
     await _chuchuTts.setSpeechRate(0.43);
     await _chuchuTts.setPitch(1.18);
     await _chuchuTts.setVolume(1.0);
@@ -96,11 +166,23 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   String _buildMenuIntroText() {
-    final String businessName = (widget.truck['title'] ?? 'this seller').toString();
-    final availableItems = menuItems.where((item) => item['isAvailable'] == true).toList();
+    final String businessName =
+        (widget.truck['title'] ?? 'this seller').toString();
+
+    final availableItems =
+        menuItems.where((item) => item['isAvailable'] == true).toList();
 
     if (availableItems.isEmpty) {
-      return 'Hi, I am Chuchu. $businessName does not have menu items available right now.';
+      switch (AppText.language) {
+        case 'es':
+          return '$businessName no tiene artículos disponibles ahora.';
+        case 'hi':
+          return '$businessName में अभी कोई मेन्यू आइटम उपलब्ध नहीं है।';
+        case 'pa':
+          return '$businessName ਵਿੱਚ ਹਾਲੇ ਕੋਈ ਮੈਨੂ ਆਈਟਮ ਉਪਲਬਧ ਨਹੀਂ।';
+        default:
+          return '$businessName does not have menu items available right now.';
+      }
     }
 
     final previewItems = availableItems
@@ -109,8 +191,18 @@ class _MenuPageState extends State<MenuPage> {
         .where((name) => name.trim().isNotEmpty)
         .join(', ');
 
-    return 'Hi, I am Chuchu. Welcome to $businessName. You can tap the speaker on any menu card and I will read it for you. Some menu items are $previewItems.';
+    switch (AppText.language) {
+      case 'es':
+        return 'Bienvenido a $businessName. Toca el altavoz en cualquier tarjeta del menú para escucharla. Algunos artículos son $previewItems.';
+      case 'hi':
+        return '$businessName में आपका स्वागत है। किसी भी मेन्यू कार्ड पर स्पीकर दबाकर सुन सकते हैं। कुछ आइटम हैं $previewItems.';
+      case 'pa':
+        return '$businessName ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ। ਕਿਸੇ ਵੀ ਮੈਨੂ ਕਾਰਡ ਤੇ ਸਪੀਕਰ ਦਬਾ ਕੇ ਸੁਣ ਸਕਦੇ ਹੋ। ਕੁਝ ਆਈਟਮ ਹਨ $previewItems.';
+      default:
+        return 'Welcome to $businessName. You can tap the speaker on any menu card and I will read it for you. Some menu items are $previewItems.';
+    }
   }
+
 
   String _buildItemSpeech(Map<String, dynamic> item) {
     final String name = item['name'].toString().trim();
@@ -122,7 +214,21 @@ class _MenuPageState extends State<MenuPage> {
 
     final parts = <String>[];
     parts.add(name);
-    if (price > 0) parts.add('Price is ${price.toStringAsFixed(2)} dollars.');
+    if (price > 0) {
+      switch (AppText.language) {
+        case 'es':
+          parts.add('El precio es ${price.toStringAsFixed(2)} dólares.');
+          break;
+        case 'hi':
+          parts.add('कीमत ${price.toStringAsFixed(2)} डॉलर है।');
+          break;
+        case 'pa':
+          parts.add('ਕੀਮਤ ${price.toStringAsFixed(2)} ਡਾਲਰ ਹੈ।');
+          break;
+        default:
+          parts.add('Price is ${price.toStringAsFixed(2)} dollars.');
+      }
+    }
     if (description.isNotEmpty) parts.add(description);
     if (includedItems.isNotEmpty) parts.add('Included: ${includedItems.join(', ')}.');
     if (removableOptions.isNotEmpty) parts.add('You can remove: ${removableOptions.join(', ')}.');
@@ -931,12 +1037,12 @@ class _MenuPageState extends State<MenuPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (includedItems.isNotEmpty) ...[
-                _buildSectionLabel('Included', compact: compact),
+                _buildSectionLabel(_txt('included'), compact: compact),
                 Wrap(children: includedItems.map((e) => _buildChip(e, icon: Icons.check_circle_outline, compact: compact)).toList()),
                 const SizedBox(height: 6),
               ],
               if (removableOptions.isNotEmpty) ...[
-                _buildSectionLabel('Can remove', compact: compact),
+                _buildSectionLabel(_txt('canRemove'), compact: compact),
                 Wrap(children: removableOptions.map((e) => _buildChip(e, icon: Icons.remove_circle_outline, compact: compact)).toList()),
                 const SizedBox(height: 6),
               ],
@@ -1149,8 +1255,8 @@ class _MenuPageState extends State<MenuPage> {
                 Expanded(
                   child: Text(
                     widget.isOwnerView
-                        ? 'Owner POS menu. Rotate your phone/tablet for 2–3 item grid view.'
-                        : 'Chuchu can read menu items. Tap 🔊 on any card.',
+                        ? _txt('ownerMenuHint')
+                        : _txt('tapSpeaker'),
                     style: TextStyle(fontSize: 14, color: _secondaryText, fontWeight: FontWeight.w500),
                   ),
                 ),
@@ -1170,9 +1276,9 @@ class _MenuPageState extends State<MenuPage> {
             child: grouped.isEmpty
                 ? Center(
               child: Text(
-                'No available menu items yet.',
-                style: TextStyle(fontSize: 16, color: _secondaryText),
-              ),
+                       _txt('noItems'),
+                       style: TextStyle(fontSize: 16, color: _secondaryText),
+                     )
             )
                 : ListView(
               padding: const EdgeInsets.only(bottom: 10),
@@ -1192,12 +1298,20 @@ class _MenuPageState extends State<MenuPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Selected Items',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: _primaryText),
+                      _txt('selectedItems'),
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: _primaryText,
+                      ),
                     ),
                     Text(
                       totalItemsSelected.toString(),
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _primaryText),
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: _primaryText,
+                      ),
                     ),
                   ],
                 ),
@@ -1206,12 +1320,19 @@ class _MenuPageState extends State<MenuPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Total',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _primaryText),
+                      _txt('total'),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _primaryText,
+                      ),
                     ),
                     Text(
                       '\$${total.toStringAsFixed(2)}',
-                      style: TextStyle(fontSize: 18, color: _primaryText),
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: _primaryText,
+                      ),
                     ),
                   ],
                 ),
@@ -1222,18 +1343,19 @@ class _MenuPageState extends State<MenuPage> {
                     onPressed: total == 0
                         ? null
                         : () {
-                     _toggleSpeakItem(
-                       'order_summary',
-                       'Your order has $totalItemsSelected items. Total is ${total.toStringAsFixed(2)} dollars.',
-                     );
-                      Navigator.pop(context, {
-                        'cart': cart,
-                        'orderItems': _buildOrderItemsForReturn(),
-                        'total': total,
-                      });
-                    },
+                            _toggleSpeakItem(
+                              'order_summary',
+                              'Your order has $totalItemsSelected items. Total is ${total.toStringAsFixed(2)} dollars.',
+                            );
+
+                            Navigator.pop(context, {
+                              'cart': cart,
+                              'orderItems': _buildOrderItemsForReturn(),
+                              'total': total,
+                            });
+                          },
                     icon: const Icon(Icons.shopping_bag),
-                    label: const Text('Add to Order'),
+                    label: Text(_txt('addToOrder')),
                   ),
                 ),
               ],

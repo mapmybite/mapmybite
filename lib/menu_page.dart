@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class MenuPage extends StatefulWidget {
   final Map<String, dynamic> truck;
@@ -20,6 +21,7 @@ class MenuPage extends StatefulWidget {
 
 class _MenuPageState extends State<MenuPage> {
   final Map<String, int> cart = {};
+  final FlutterTts _chuchuTts = FlutterTts();
 
   bool get _isDarkMode => widget.isDarkMode;
   Color get _pageBg => _isDarkMode ? Colors.black : const Color(0xFFFFF7FC);
@@ -29,6 +31,70 @@ class _MenuPageState extends State<MenuPage> {
       _isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
   Color get _borderColor =>
       _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupChuchuVoice();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!widget.isOwnerView && mounted) {
+        _speakChuchu(_buildMenuIntroText());
+      }
+    });
+  }
+
+  Future<void> _setupChuchuVoice() async {
+    await _chuchuTts.setLanguage('en-US');
+    await _chuchuTts.setSpeechRate(0.43);
+    await _chuchuTts.setPitch(1.18);
+    await _chuchuTts.setVolume(1.0);
+  }
+
+  Future<void> _speakChuchu(String text) async {
+    final clean = text.trim();
+    if (clean.isEmpty) return;
+    await _chuchuTts.stop();
+    await _chuchuTts.speak(clean);
+  }
+
+  String _buildMenuIntroText() {
+    final String businessName = (widget.truck['title'] ?? 'this seller').toString();
+    final availableItems = menuItems.where((item) => item['isAvailable'] == true).toList();
+
+    if (availableItems.isEmpty) {
+      return 'Hi, I am Chuchu. $businessName does not have menu items available right now.';
+    }
+
+    final previewItems = availableItems
+        .take(4)
+        .map((item) => item['name'].toString())
+        .where((name) => name.trim().isNotEmpty)
+        .join(', ');
+
+    return 'Hi, I am Chuchu. Welcome to $businessName. You can tap the speaker on any menu card and I will read it for you. Some menu items are $previewItems.';
+  }
+
+  String _buildItemSpeech(Map<String, dynamic> item) {
+    final String name = item['name'].toString().trim();
+    final double price = _toDouble(item['price']);
+    final String description = item['description'].toString().trim();
+    final List<String> includedItems = _toStringList(item['includedItems']);
+    final List<String> removableOptions = _toStringList(item['removableOptions']);
+    final List<Map<String, dynamic>> addOns = _toAddOnList(item['addOnOptions']);
+
+    final parts = <String>[];
+    parts.add(name);
+    if (price > 0) parts.add('Price is ${price.toStringAsFixed(2)} dollars.');
+    if (description.isNotEmpty) parts.add(description);
+    if (includedItems.isNotEmpty) parts.add('Included: ${includedItems.join(', ')}.');
+    if (removableOptions.isNotEmpty) parts.add('You can remove: ${removableOptions.join(', ')}.');
+    if (addOns.isNotEmpty) {
+      parts.add('Add ons available: ${addOns.map((e) => e['name'].toString()).join(', ')}.');
+    }
+    parts.add('Tap plus to customize and add this item to your order.');
+
+    return parts.join(' ');
+  }
 
   List<Map<String, dynamic>> get menuItems {
     final dynamic rawMenuItems = widget.truck['menuItems'];
@@ -47,21 +113,13 @@ class _MenuPageState extends State<MenuPage> {
             'removableOptions': _toStringList(item['removableOptions']),
             'addOnOptions': _toAddOnList(item['addOnOptions']),
             'localImagePath': (item['localImagePath'] ?? '').toString(),
-            'customerImagePath':
-            (item['customerImagePath'] ?? '').toString(),
+            'customerImagePath': (item['customerImagePath'] ?? '').toString(),
             'imageUrl': (item['imageUrl'] ?? '').toString(),
-            'isAvailable':
-            item['isAvailable'] is bool ? item['isAvailable'] : true,
-            'isFeatured':
-            item['isFeatured'] is bool ? item['isFeatured'] : false,
-            'subscriptionPlan':
-            (item['subscriptionPlan'] ?? 'free').toString(),
-            'customerCanSeeImage': item['customerCanSeeImage'] is bool
-                ? item['customerCanSeeImage']
-                : false,
-            'customerCanSeeStory': item['customerCanSeeStory'] is bool
-                ? item['customerCanSeeStory']
-                : false,
+            'isAvailable': item['isAvailable'] is bool ? item['isAvailable'] : true,
+            'isFeatured': item['isFeatured'] is bool ? item['isFeatured'] : false,
+            'subscriptionPlan': (item['subscriptionPlan'] ?? 'free').toString(),
+            'customerCanSeeImage': item['customerCanSeeImage'] is bool ? item['customerCanSeeImage'] : false,
+            'customerCanSeeStory': item['customerCanSeeStory'] is bool ? item['customerCanSeeStory'] : false,
           };
         }
 
@@ -132,15 +190,12 @@ class _MenuPageState extends State<MenuPage> {
 
   double _toDouble(dynamic value) {
     if (value is num) return value.toDouble();
-    return double.tryParse(value.toString()) ?? 0.0;
+    return double.tryParse(value.toString().replaceAll('\$', '').trim()) ?? 0.0;
   }
 
   List<String> _toStringList(dynamic value) {
     if (value is List) {
-      return value
-          .map((e) => e.toString().trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
+      return value.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
     }
     return <String>[];
   }
@@ -152,7 +207,7 @@ class _MenuPageState extends State<MenuPage> {
           'name': (addOn['name'] ?? '').toString(),
           'price': _toDouble(addOn['price']),
         };
-      }).toList();
+      }).where((addOn) => addOn['name'].toString().trim().isNotEmpty).toList();
     }
     return <Map<String, dynamic>>[];
   }
@@ -192,12 +247,9 @@ class _MenuPageState extends State<MenuPage> {
     required String notes,
   }) {
     final removed = [...removedOptions]..sort();
-    final addOns = selectedAddOns
-        .map((e) => '${e['name']}|${_toDouble(e['price'])}')
-        .toList()
-      ..sort();
+    final addOns = selectedAddOns.map((e) => '${e['name']}|${_toDouble(e['price'])}').toList()..sort();
 
-    return '${itemName}__removed:${removed.join(",")}__addons:${addOns.join(",")}__notes:${notes.trim()}';
+    return '${itemName}__removed:${removed.join(',')}__addons:${addOns.join(',')}__notes:${notes.trim()}';
   }
 
   String _buildCartDisplayName({
@@ -207,14 +259,9 @@ class _MenuPageState extends State<MenuPage> {
   }) {
     final parts = <String>[itemName];
 
-    if (removedOptions.isNotEmpty) {
-      parts.add('No ${removedOptions.join(", ")}');
-    }
-
+    if (removedOptions.isNotEmpty) parts.add('No ${removedOptions.join(', ')}');
     if (selectedAddOns.isNotEmpty) {
-      parts.add(
-        '+ ${selectedAddOns.map((e) => e['name'].toString()).join(", ")}',
-      );
+      parts.add('+ ${selectedAddOns.map((e) => e['name'].toString()).join(', ')}');
     }
 
     return parts.join(' • ');
@@ -222,11 +269,9 @@ class _MenuPageState extends State<MenuPage> {
 
   Future<void> _showCustomizeItemDialog(Map<String, dynamic> item) async {
     final String itemName = item['name'].toString();
-    final double basePrice = item['price'] as double;
-    final List<String> removableOptions =
-    (item['removableOptions'] as List).map((e) => e.toString()).toList();
-    final List<Map<String, dynamic>> addOns =
-    (item['addOnOptions'] as List).cast<Map<String, dynamic>>();
+    final double basePrice = _toDouble(item['price']);
+    final List<String> removableOptions = _toStringList(item['removableOptions']);
+    final List<Map<String, dynamic>> addOns = _toAddOnList(item['addOnOptions']);
 
     final Set<String> removedOptions = {};
     final List<Map<String, dynamic>> selectedAddOns = [];
@@ -238,14 +283,19 @@ class _MenuPageState extends State<MenuPage> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final double totalPrice = _calculateCustomItemTotal(
-              basePrice,
-              selectedAddOns,
-              quantity,
-            );
+            final double totalPrice = _calculateCustomItemTotal(basePrice, selectedAddOns, quantity);
 
             return AlertDialog(
-              title: Text(itemName),
+              title: Row(
+                children: [
+                  Expanded(child: Text(itemName)),
+                  IconButton(
+                    tooltip: 'Chuchu read item',
+                    onPressed: () => _speakChuchu(_buildItemSpeech(item)),
+                    icon: const Icon(Icons.volume_up, color: Colors.orange),
+                  ),
+                ],
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -257,10 +307,7 @@ class _MenuPageState extends State<MenuPage> {
                     ),
                     if (removableOptions.isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      const Text(
-                        'Remove items',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      const Text('Remove items', style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       ...removableOptions.map((option) {
                         return CheckboxListTile(
@@ -282,38 +329,24 @@ class _MenuPageState extends State<MenuPage> {
                     ],
                     if (addOns.isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      const Text(
-                        'Add-ons',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      const Text('Add-ons', style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       ...addOns.map((addOn) {
-                        final String addOnName =
-                        (addOn['name'] ?? '').toString();
+                        final String addOnName = (addOn['name'] ?? '').toString();
                         final double addOnPrice = _toDouble(addOn['price']);
-                        final bool isSelected = selectedAddOns.any(
-                              (selected) => selected['name'] == addOnName,
-                        );
+                        final bool isSelected = selectedAddOns.any((selected) => selected['name'] == addOnName);
 
                         return CheckboxListTile(
                           value: isSelected,
                           contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            '$addOnName (+\$${addOnPrice.toStringAsFixed(2)})',
-                          ),
+                          title: Text('$addOnName (+\$${addOnPrice.toStringAsFixed(2)})'),
                           controlAffinity: ListTileControlAffinity.leading,
                           onChanged: (value) {
                             setDialogState(() {
                               if (value == true) {
-                                selectedAddOns.add({
-                                  'name': addOnName,
-                                  'price': addOnPrice,
-                                });
+                                selectedAddOns.add({'name': addOnName, 'price': addOnPrice});
                               } else {
-                                selectedAddOns.removeWhere(
-                                      (selected) =>
-                                  selected['name'] == addOnName,
-                                );
+                                selectedAddOns.removeWhere((selected) => selected['name'] == addOnName);
                               }
                             });
                           },
@@ -333,33 +366,23 @@ class _MenuPageState extends State<MenuPage> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Text(
-                          'Quantity',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        const Text('Quantity', style: TextStyle(fontWeight: FontWeight.bold)),
                         const Spacer(),
                         IconButton(
                           onPressed: quantity > 1
                               ? () {
-                            setDialogState(() {
-                              quantity--;
-                            });
+                            setDialogState(() => quantity--);
                           }
                               : null,
                           icon: const Icon(Icons.remove_circle),
                         ),
                         Text(
                           quantity.toString(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         IconButton(
                           onPressed: () {
-                            setDialogState(() {
-                              quantity++;
-                            });
+                            setDialogState(() => quantity++);
                           },
                           icon: const Icon(Icons.add_circle),
                         ),
@@ -368,10 +391,7 @@ class _MenuPageState extends State<MenuPage> {
                     const SizedBox(height: 8),
                     Text(
                       'Total: \$${totalPrice.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -403,6 +423,8 @@ class _MenuPageState extends State<MenuPage> {
                       cart[cartKey] = (cart[cartKey] ?? 0) + quantity;
                     });
 
+                    _speakChuchu('$displayName added to your order.');
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('$displayName added to cart'),
@@ -420,12 +442,6 @@ class _MenuPageState extends State<MenuPage> {
         );
       },
     );
-  }
-
-  void addItem(String name) {
-    setState(() {
-      cart[name] = (cart[name] ?? 0) + 1;
-    });
   }
 
   void removeItem(String name) {
@@ -448,9 +464,7 @@ class _MenuPageState extends State<MenuPage> {
   int _quantityForItem(String name) {
     int qty = 0;
     for (final entry in cart.entries) {
-      if (entry.key.split('__').first == name) {
-        qty += entry.value;
-      }
+      if (entry.key.split('__').first == name) qty += entry.value;
     }
     return qty;
   }
@@ -461,19 +475,15 @@ class _MenuPageState extends State<MenuPage> {
     for (final entry in cart.entries) {
       final String cartKey = entry.key;
       final int quantity = entry.value;
-
       final parts = cartKey.split('__');
       final String itemName = parts.isNotEmpty ? parts[0] : '';
 
-      final Map<String, dynamic>? matchedItem =
-      menuItems.cast<Map<String, dynamic>?>().firstWhere(
+      final Map<String, dynamic>? matchedItem = menuItems.cast<Map<String, dynamic>?>().firstWhere(
             (item) => item != null && item['name'].toString() == itemName,
         orElse: () => null,
       );
 
-      final double basePrice =
-      matchedItem != null ? _toDouble(matchedItem['price']) : 0.0;
-
+      final double basePrice = matchedItem != null ? _toDouble(matchedItem['price']) : 0.0;
       List<Map<String, dynamic>> selectedAddOns = [];
 
       for (final part in parts.skip(1)) {
@@ -488,19 +498,14 @@ class _MenuPageState extends State<MenuPage> {
               final addOnParts = e.split('|');
               return {
                 'name': addOnParts.isNotEmpty ? addOnParts[0] : '',
-                'price':
-                addOnParts.length > 1 ? _toDouble(addOnParts[1]) : 0.0,
+                'price': addOnParts.length > 1 ? _toDouble(addOnParts[1]) : 0.0,
               };
             }).toList();
           }
         }
       }
 
-      sum += _calculateCustomItemTotal(
-        basePrice,
-        selectedAddOns,
-        quantity,
-      );
+      sum += _calculateCustomItemTotal(basePrice, selectedAddOns, quantity);
     }
 
     return sum;
@@ -522,25 +527,18 @@ class _MenuPageState extends State<MenuPage> {
 
   int get totalItemsSelected {
     int count = 0;
-    for (final qty in cart.values) {
-      count += qty;
-    }
+    for (final qty in cart.values) count += qty;
     return count;
   }
 
   Widget _buildChip(String text, {IconData? icon, bool compact = false}) {
     return Container(
       margin: const EdgeInsets.only(right: 6, bottom: 6),
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 5 : 7,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10, vertical: compact ? 5 : 7),
       decoration: BoxDecoration(
         color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
-        ),
+        border: Border.all(color: _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -551,11 +549,7 @@ class _MenuPageState extends State<MenuPage> {
           ],
           Text(
             text,
-            style: TextStyle(
-              fontSize: compact ? 11 : 12,
-              fontWeight: FontWeight.w600,
-              color: _primaryText,
-            ),
+            style: TextStyle(fontSize: compact ? 11 : 12, fontWeight: FontWeight.w600, color: _primaryText),
           ),
         ],
       ),
@@ -567,11 +561,7 @@ class _MenuPageState extends State<MenuPage> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: compact ? 12 : 13,
-          fontWeight: FontWeight.w700,
-          color: _primaryText,
-        ),
+        style: TextStyle(fontSize: compact ? 12 : 13, fontWeight: FontWeight.w700, color: _primaryText),
       ),
     );
   }
@@ -582,15 +572,10 @@ class _MenuPageState extends State<MenuPage> {
       MaterialPageRoute(
         builder: (_) => Scaffold(
           backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
-          ),
+          appBar: AppBar(backgroundColor: Colors.black, foregroundColor: Colors.white),
           body: Center(
             child: InteractiveViewer(
-              child: isNetwork
-                  ? Image.network(path, fit: BoxFit.contain)
-                  : Image.file(File(path), fit: BoxFit.contain),
+              child: isNetwork ? Image.network(path, fit: BoxFit.contain) : Image.file(File(path), fit: BoxFit.contain),
             ),
           ),
         ),
@@ -598,26 +583,18 @@ class _MenuPageState extends State<MenuPage> {
     );
   }
 
-  Widget _buildImageArea(
-      Map<String, dynamic> item, {
-        bool compact = false,
-      }) {
+  Widget _buildImageArea(Map<String, dynamic> item, {bool compact = false}) {
     final String localImagePath = item['localImagePath'].toString().trim();
-    final String customerImagePath =
-    (item['customerImagePath'] ?? '').toString().trim();
+    final String customerImagePath = (item['customerImagePath'] ?? '').toString().trim();
     final String imageUrl = item['imageUrl'].toString().trim();
     final bool customerCanSeeImage = item['customerCanSeeImage'] == true;
 
     final String displayPath = widget.isOwnerView
         ? localImagePath
-        : (customerCanSeeImage && customerImagePath.isNotEmpty
-        ? customerImagePath
-        : localImagePath);
+        : (customerCanSeeImage && customerImagePath.isNotEmpty ? customerImagePath : localImagePath);
 
     final double imageSize = compact ? 78 : 110;
-
-    final bool hasFileImage =
-        displayPath.isNotEmpty && File(displayPath).existsSync();
+    final bool hasFileImage = displayPath.isNotEmpty && File(displayPath).existsSync();
     final bool hasCloudImage = customerCanSeeImage && imageUrl.isNotEmpty;
 
     if (!hasFileImage && !hasCloudImage) {
@@ -625,9 +602,7 @@ class _MenuPageState extends State<MenuPage> {
         width: imageSize,
         height: imageSize,
         decoration: BoxDecoration(
-          color: _isDarkMode
-              ? Colors.orange.shade900.withOpacity(0.3)
-              : Colors.orange.shade100,
+          color: _isDarkMode ? Colors.orange.shade900.withOpacity(0.3) : Colors.orange.shade100,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: _borderColor),
         ),
@@ -653,11 +628,7 @@ class _MenuPageState extends State<MenuPage> {
               width: imageSize,
               height: imageSize,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return const Center(
-                  child: Icon(Icons.broken_image_outlined),
-                );
-              },
+              errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined)),
             ),
           ),
         ),
@@ -681,38 +652,26 @@ class _MenuPageState extends State<MenuPage> {
             width: imageSize,
             height: imageSize,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) {
-              return const Center(
-                child: Icon(Icons.broken_image_outlined),
-              );
-            },
+            errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined)),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildItemCard(
-      Map<String, dynamic> item, {
-        bool compact = false,
-      }) {
+  Widget _buildItemCard(Map<String, dynamic> item, {bool compact = false}) {
     final String name = item['name'].toString();
-    final double price = item['price'] as double;
+    final double price = _toDouble(item['price']);
     final int qty = _quantityForItem(name);
     final String description = item['description'].toString().trim();
-    final List<String> includedItems =
-    (item['includedItems'] as List).map((e) => e.toString()).toList();
-    final List<String> removableOptions =
-    (item['removableOptions'] as List).map((e) => e.toString()).toList();
-    final List<Map<String, dynamic>> addOns =
-    (item['addOnOptions'] as List).cast<Map<String, dynamic>>();
+    final List<String> includedItems = _toStringList(item['includedItems']);
+    final List<String> removableOptions = _toStringList(item['removableOptions']);
+    final List<Map<String, dynamic>> addOns = _toAddOnList(item['addOnOptions']);
     final bool isFeatured = item['isFeatured'] == true;
     final String subscriptionPlan = item['subscriptionPlan'].toString();
 
     return Container(
-      margin: compact
-          ? EdgeInsets.zero
-          : const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      margin: compact ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       padding: EdgeInsets.all(compact ? 10 : 12),
       decoration: BoxDecoration(
         color: _cardBg,
@@ -775,6 +734,7 @@ class _MenuPageState extends State<MenuPage> {
             const SizedBox(width: 12),
             Expanded(
               child: _buildItemTextArea(
+                item: item,
                 name: name,
                 price: price,
                 description: description,
@@ -784,11 +744,7 @@ class _MenuPageState extends State<MenuPage> {
             ),
           ],
         ),
-        _buildOptionsArea(
-          includedItems: includedItems,
-          removableOptions: removableOptions,
-          addOns: addOns,
-        ),
+        _buildOptionsArea(includedItems: includedItems, removableOptions: removableOptions, addOns: addOns),
         _buildQtyRow(name: name, qty: qty),
       ],
     );
@@ -815,6 +771,7 @@ class _MenuPageState extends State<MenuPage> {
             const SizedBox(width: 10),
             Expanded(
               child: _buildItemTextArea(
+                item: item,
                 name: name,
                 price: price,
                 description: description,
@@ -825,18 +782,14 @@ class _MenuPageState extends State<MenuPage> {
             ),
           ],
         ),
-        _buildOptionsArea(
-          includedItems: includedItems,
-          removableOptions: removableOptions,
-          addOns: addOns,
-          compact: true,
-        ),
+        _buildOptionsArea(includedItems: includedItems, removableOptions: removableOptions, addOns: addOns, compact: true),
         _buildQtyRow(name: name, qty: qty, compact: true),
       ],
     );
   }
 
   Widget _buildItemTextArea({
+    required Map<String, dynamic> item,
     required String name,
     required double price,
     required String description,
@@ -847,40 +800,47 @@ class _MenuPageState extends State<MenuPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (isFeatured)
-              _buildChip('Featured', icon: Icons.star_border, compact: compact),
-            if (subscriptionPlan != 'free')
-              _buildChip(
-                subscriptionPlan == 'pro' ? 'Pro' : 'Premium',
-                icon: Icons.workspace_premium_outlined,
-                compact: compact,
+            Expanded(
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  if (isFeatured) _buildChip('Featured', icon: Icons.star_border, compact: compact),
+                  if (subscriptionPlan != 'free')
+                    _buildChip(
+                      subscriptionPlan == 'pro' ? 'Pro' : 'Premium',
+                      icon: Icons.workspace_premium_outlined,
+                      compact: compact,
+                    ),
+                ],
               ),
+            ),
+            IconButton(
+              tooltip: 'Chuchu read item',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _speakChuchu(_buildItemSpeech(item)),
+              icon: Icon(
+                Icons.volume_up,
+                size: compact ? 20 : 22,
+                color: Colors.orange,
+              ),
+            ),
           ],
         ),
-        if (isFeatured || subscriptionPlan != 'free')
-          SizedBox(height: compact ? 4 : 6),
+        if (isFeatured || subscriptionPlan != 'free') SizedBox(height: compact ? 4 : 6),
         Text(
           name,
           maxLines: compact ? 2 : null,
           overflow: compact ? TextOverflow.ellipsis : TextOverflow.visible,
-          style: TextStyle(
-            fontSize: compact ? 15 : 17,
-            fontWeight: FontWeight.w800,
-            color: _primaryText,
-          ),
+          style: TextStyle(fontSize: compact ? 15 : 17, fontWeight: FontWeight.w800, color: _primaryText),
         ),
         const SizedBox(height: 4),
         Text(
           '\$${price.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontSize: compact ? 14 : 15,
-            color: _secondaryText,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: compact ? 14 : 15, color: _secondaryText, fontWeight: FontWeight.w600),
         ),
         if (description.isNotEmpty) ...[
           SizedBox(height: compact ? 6 : 8),
@@ -888,10 +848,7 @@ class _MenuPageState extends State<MenuPage> {
             description,
             maxLines: compact ? 2 : null,
             overflow: compact ? TextOverflow.ellipsis : TextOverflow.visible,
-            style: TextStyle(
-              fontSize: compact ? 12 : 13,
-              color: _secondaryText,
-            ),
+            style: TextStyle(fontSize: compact ? 12 : 13, color: _secondaryText),
           ),
         ],
       ],
@@ -917,55 +874,28 @@ class _MenuPageState extends State<MenuPage> {
           decoration: BoxDecoration(
             color: _isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
-            ),
+            border: Border.all(color: _isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (includedItems.isNotEmpty) ...[
                 _buildSectionLabel('Included', compact: compact),
-                Wrap(
-                  children: includedItems
-                      .map(
-                        (e) => _buildChip(
-                      e,
-                      icon: Icons.check_circle_outline,
-                      compact: compact,
-                    ),
-                  )
-                      .toList(),
-                ),
+                Wrap(children: includedItems.map((e) => _buildChip(e, icon: Icons.check_circle_outline, compact: compact)).toList()),
                 const SizedBox(height: 6),
               ],
               if (removableOptions.isNotEmpty) ...[
                 _buildSectionLabel('Can remove', compact: compact),
-                Wrap(
-                  children: removableOptions
-                      .map(
-                        (e) => _buildChip(
-                      e,
-                      icon: Icons.remove_circle_outline,
-                      compact: compact,
-                    ),
-                  )
-                      .toList(),
-                ),
+                Wrap(children: removableOptions.map((e) => _buildChip(e, icon: Icons.remove_circle_outline, compact: compact)).toList()),
                 const SizedBox(height: 6),
               ],
               if (addOns.isNotEmpty) ...[
                 _buildSectionLabel('Add-ons', compact: compact),
                 Wrap(
                   children: addOns.map((addOn) {
-                    final String addOnName =
-                    (addOn['name'] ?? '').toString();
+                    final String addOnName = (addOn['name'] ?? '').toString();
                     final double addOnPrice = _toDouble(addOn['price']);
-                    return _buildChip(
-                      '$addOnName (+\$${addOnPrice.toStringAsFixed(2)})',
-                      icon: Icons.add_circle_outline,
-                      compact: compact,
-                    );
+                    return _buildChip('$addOnName (+\$${addOnPrice.toStringAsFixed(2)})', icon: Icons.add_circle_outline, compact: compact);
                   }).toList(),
                 ),
               ],
@@ -976,11 +906,7 @@ class _MenuPageState extends State<MenuPage> {
     );
   }
 
-  Widget _buildQtyRow({
-    required String name,
-    required int qty,
-    bool compact = false,
-  }) {
+  Widget _buildQtyRow({required String name, required int qty, bool compact = false}) {
     return Padding(
       padding: EdgeInsets.only(top: compact ? 8 : 12),
       child: Row(
@@ -990,46 +916,28 @@ class _MenuPageState extends State<MenuPage> {
               qty > 0 ? 'Added: $qty' : 'Tap + to add item',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: compact ? 12 : 13,
-                color: _secondaryText,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: compact ? 12 : 13, color: _secondaryText, fontWeight: FontWeight.w600),
             ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                visualDensity:
-                compact ? VisualDensity.compact : VisualDensity.standard,
+                visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
                 onPressed: () => removeItem(name),
-                icon: Icon(
-                  Icons.remove_circle,
-                  color: _isDarkMode ? Colors.orange : Colors.black,
-                ),
+                icon: Icon(Icons.remove_circle, color: _isDarkMode ? Colors.orange : Colors.black),
               ),
               Text(
                 qty.toString(),
-                style: TextStyle(
-                  fontSize: compact ? 15 : 16,
-                  fontWeight: FontWeight.bold,
-                  color: _primaryText,
-                ),
+                style: TextStyle(fontSize: compact ? 15 : 16, fontWeight: FontWeight.bold, color: _primaryText),
               ),
               IconButton(
-                visualDensity:
-                compact ? VisualDensity.compact : VisualDensity.standard,
+                visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
                 onPressed: () {
-                  final item = menuItems.firstWhere(
-                        (menuItem) => menuItem['name'].toString() == name,
-                  );
+                  final item = menuItems.firstWhere((menuItem) => menuItem['name'].toString() == name);
                   _showCustomizeItemDialog(item);
                 },
-                icon: Icon(
-                  Icons.add_circle,
-                  color: _isDarkMode ? Colors.orange : Colors.black,
-                ),
+                icon: Icon(Icons.add_circle, color: _isDarkMode ? Colors.orange : Colors.black),
               ),
             ],
           ),
@@ -1051,41 +959,23 @@ class _MenuPageState extends State<MenuPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(
-              compact ? 12 : 16,
-              compact ? 12 : 14,
-              compact ? 12 : 16,
-              8,
-            ),
+            padding: EdgeInsets.fromLTRB(compact ? 12 : 16, compact ? 12 : 14, compact ? 12 : 16, 8),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     category,
-                    style: TextStyle(
-                      fontSize: compact ? 17 : 19,
-                      fontWeight: FontWeight.bold,
-                      color: _primaryText,
-                    ),
+                    style: TextStyle(fontSize: compact ? 17 : 19, fontWeight: FontWeight.bold, color: _primaryText),
                   ),
                 ),
-                if (compact)
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '$columnCount columns',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade700,
-                      ),
-                    ),
-                  ),
+                IconButton(
+                  tooltip: 'Chuchu read category',
+                  onPressed: () {
+                    final text = items.map(_buildItemSpeech).join(' Next item. ');
+                    _speakChuchu('$category. $text');
+                  },
+                  icon: const Icon(Icons.record_voice_over, color: Colors.orange),
+                ),
               ],
             ),
           ),
@@ -1104,9 +994,7 @@ class _MenuPageState extends State<MenuPage> {
                   mainAxisSpacing: 10,
                   childAspectRatio: columnCount == 3 ? 1.12 : 1.35,
                 ),
-                itemBuilder: (context, index) {
-                  return _buildItemCard(items[index], compact: true);
-                },
+                itemBuilder: (context, index) => _buildItemCard(items[index], compact: true),
               ),
             ),
         ],
@@ -1120,19 +1008,15 @@ class _MenuPageState extends State<MenuPage> {
     for (final entry in cart.entries) {
       final String cartKey = entry.key;
       final int quantity = entry.value;
-
       final parts = cartKey.split('__');
       final String itemName = parts.isNotEmpty ? parts[0] : '';
 
-      final Map<String, dynamic>? matchedItem =
-      menuItems.cast<Map<String, dynamic>?>().firstWhere(
+      final Map<String, dynamic>? matchedItem = menuItems.cast<Map<String, dynamic>?>().firstWhere(
             (item) => item != null && item['name'].toString() == itemName,
         orElse: () => null,
       );
 
-      final double basePrice =
-      matchedItem != null ? _toDouble(matchedItem['price']) : 0.0;
-
+      final double basePrice = matchedItem != null ? _toDouble(matchedItem['price']) : 0.0;
       List<String> removedOptions = [];
       List<Map<String, dynamic>> selectedAddOns = [];
       String notes = '';
@@ -1141,11 +1025,7 @@ class _MenuPageState extends State<MenuPage> {
         if (part.startsWith('removed:')) {
           final removedText = part.replaceFirst('removed:', '');
           if (removedText.trim().isNotEmpty) {
-            removedOptions = removedText
-                .split(',')
-                .map((e) => e.trim())
-                .where((e) => e.isNotEmpty)
-                .toList();
+            removedOptions = removedText.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
           }
         } else if (part.startsWith('addons:')) {
           final addOnText = part.replaceFirst('addons:', '');
@@ -1158,8 +1038,7 @@ class _MenuPageState extends State<MenuPage> {
               final addOnParts = e.split('|');
               return {
                 'name': addOnParts.isNotEmpty ? addOnParts[0] : '',
-                'price':
-                addOnParts.length > 1 ? _toDouble(addOnParts[1]) : 0.0,
+                'price': addOnParts.length > 1 ? _toDouble(addOnParts[1]) : 0.0,
               };
             }).toList();
           }
@@ -1168,11 +1047,7 @@ class _MenuPageState extends State<MenuPage> {
         }
       }
 
-      final double itemTotal = _calculateCustomItemTotal(
-        basePrice,
-        selectedAddOns,
-        quantity,
-      );
+      final double itemTotal = _calculateCustomItemTotal(basePrice, selectedAddOns, quantity);
 
       orderItems.add({
         'cartKey': cartKey,
@@ -1190,6 +1065,12 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   @override
+  void dispose() {
+    _chuchuTts.stop();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final grouped = groupedMenu;
     final int columnCount = _ownerGridColumnCount(context);
@@ -1202,21 +1083,36 @@ class _MenuPageState extends State<MenuPage> {
         foregroundColor: _primaryText,
         elevation: 0,
         title: Text(widget.truck['title'] ?? 'Menu'),
+        actions: [
+          IconButton(
+            tooltip: 'Chuchu read menu',
+            onPressed: () => _speakChuchu(_buildMenuIntroText()),
+            icon: const Icon(Icons.record_voice_over, color: Colors.orange),
+          ),
+        ],
       ),
       body: Column(
         children: [
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Text(
-              widget.isOwnerView
-                  ? 'Owner POS menu. Rotate your phone/tablet for 2–3 item grid view.'
-                  : 'Menu details, item options, and photos are ready here.',
-              style: TextStyle(
-                fontSize: 14,
-                color: _secondaryText,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.isOwnerView
+                        ? 'Owner POS menu. Rotate your phone/tablet for 2–3 item grid view.'
+                        : 'Chuchu can read menu items. Tap 🔊 on any card.',
+                    style: TextStyle(fontSize: 14, color: _secondaryText, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                if (!widget.isOwnerView)
+                  TextButton.icon(
+                    onPressed: () => _speakChuchu(_buildMenuIntroText()),
+                    icon: const Icon(Icons.volume_up, color: Colors.orange),
+                    label: const Text('Chuchu'),
+                  ),
+              ],
             ),
           ),
           Expanded(
@@ -1224,33 +1120,20 @@ class _MenuPageState extends State<MenuPage> {
                 ? Center(
               child: Text(
                 'No available menu items yet.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: _secondaryText,
-                ),
+                style: TextStyle(fontSize: 16, color: _secondaryText),
               ),
             )
                 : ListView(
               padding: const EdgeInsets.only(bottom: 10),
-              children: _buildCategorySections(
-                grouped: grouped,
-                columnCount: columnCount,
-                compact: compact,
-              ),
+              children: _buildCategorySections(grouped: grouped, columnCount: columnCount, compact: compact),
             ),
           ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: _isDarkMode ? Colors.grey.shade900 : Colors.orange.shade100,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(18),
-              ),
-              border: Border(
-                top: BorderSide(
-                  color: _isDarkMode ? Colors.grey.shade700 : Colors.orange.shade200,
-                ),
-              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              border: Border(top: BorderSide(color: _isDarkMode ? Colors.grey.shade700 : Colors.orange.shade200)),
             ),
             child: Column(
               children: [
@@ -1259,19 +1142,11 @@ class _MenuPageState extends State<MenuPage> {
                   children: [
                     Text(
                       'Selected Items',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: _primaryText,
-                      ),
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: _primaryText),
                     ),
                     Text(
                       totalItemsSelected.toString(),
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: _primaryText,
-                      ),
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _primaryText),
                     ),
                   ],
                 ),
@@ -1281,18 +1156,11 @@ class _MenuPageState extends State<MenuPage> {
                   children: [
                     Text(
                       'Total',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: _primaryText,
-                      ),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _primaryText),
                     ),
                     Text(
                       '\$${total.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: _primaryText,
-                      ),
+                      style: TextStyle(fontSize: 18, color: _primaryText),
                     ),
                   ],
                 ),
@@ -1303,6 +1171,7 @@ class _MenuPageState extends State<MenuPage> {
                     onPressed: total == 0
                         ? null
                         : () {
+                      _speakChuchu('Your order has $totalItemsSelected items. Total is ${total.toStringAsFixed(2)} dollars.');
                       Navigator.pop(context, {
                         'cart': cart,
                         'orderItems': _buildOrderItemsForReturn(),

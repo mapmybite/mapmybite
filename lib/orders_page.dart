@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'order_data.dart';
@@ -7,6 +8,7 @@ import 'local_notification_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'owner_customer_data.dart';
+import 'app_text.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -16,6 +18,10 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
+  final FlutterTts _ordersTts = FlutterTts();
+  String _speakingOrderId = '';
+  bool _isSpeakingOrder = false;
+
   bool _showFilters = false;
   final ScrollController _ordersScrollController = ScrollController();
   bool _showStats = true;
@@ -48,10 +54,408 @@ class _OrdersPageState extends State<OrdersPage> {
 
   @override
   void dispose() {
+    _ordersTts.stop();
     _searchController.dispose();
     _ordersScrollController.dispose();
     super.dispose();
   }
+
+  String _txt(String key) {
+    switch (AppText.language) {
+      case 'es':
+        return {
+          'orders': 'Pedidos',
+          'orderWord': 'pedidos',
+          'today': 'Hoy',
+          'week': 'Semana',
+          'month': 'Mes',
+          'year': 'Año',
+          'showFilters': 'Mostrar filtros',
+          'hideFilters': 'Ocultar filtros',
+          'searchOrders': 'Buscar pedidos',
+          'dateRange': 'Rango de fechas',
+          'clearDateRange': 'Borrar rango',
+          'noOrdersFound': 'No se encontraron pedidos',
+          'all': 'Todos',
+          'pending': 'Pendiente',
+          'accepted': 'Aceptado',
+          'preparing': 'Preparando',
+          'ready': 'Listo',
+          'completed': 'Completado',
+          'rejected': 'Rechazado',
+          'payNow': 'Pagar ahora',
+          'payAtCounter': 'Pagar en mostrador',
+          'pos': 'POS',
+          'posOrder': 'Pedido POS',
+          'onlineOrder': 'Pedido en línea',
+          'customerIsHere': 'EL CLIENTE ESTÁ AQUÍ',
+          'new': 'NUEVO',
+          'order': 'Pedido',
+          'items': 'Artículos',
+          'customer': 'Cliente',
+          'phone': 'Teléfono',
+          'status': 'Estado',
+          'paymentMethod': 'Método de pago',
+          'paymentStatus': 'Estado de pago',
+          'skipLine': 'Saltar la fila',
+          'customerHere': 'El cliente está aquí',
+          'arrivedAt': 'Llegó a las',
+          'distance': 'Distancia',
+          'customerLocationReceived': 'Ubicación del cliente recibida',
+          'viewMap': 'Ver mapa',
+          'total': 'Total',
+          'cashReceived': 'Efectivo recibido',
+          'changeDue': 'Cambio',
+          'transaction': 'Transacción',
+          'completeWord': 'Completa',
+          'accept': 'Aceptar',
+          'reject': 'Rechazar',
+          'complete': 'Completar',
+          'paymentOptions': 'Opciones de pago',
+          'paymentReceived': 'Pago recibido',
+          'share': 'Compartir',
+          'call': 'Llamar',
+          'returning': 'Regresa',
+          'visits': 'visitas',
+          'newCustomer': 'Cliente nuevo',
+          'reward': 'Recompensa',
+          'noItems': 'Sin artículos',
+          'notSelected': 'No seleccionado',
+          'unpaid': 'No pagado',
+          'paid': 'Pagado',
+          'waitingApproval': 'Esperando aprobación del dueño',
+          'waitingPaymentOptions': 'Esperando enviar opciones de pago',
+          'readOrder': 'Leer pedido',
+        }[key] ?? key;
+      case 'hi':
+        return {
+          'orders': 'ऑर्डर',
+          'orderWord': 'ऑर्डर',
+          'today': 'आज',
+          'week': 'हफ़्ता',
+          'month': 'महीना',
+          'year': 'साल',
+          'showFilters': 'फ़िल्टर दिखाएँ',
+          'hideFilters': 'फ़िल्टर छुपाएँ',
+          'searchOrders': 'ऑर्डर खोजें',
+          'dateRange': 'तारीख रेंज',
+          'clearDateRange': 'तारीख रेंज हटाएँ',
+          'noOrdersFound': 'कोई ऑर्डर नहीं मिला',
+          'all': 'सभी',
+          'pending': 'पेंडिंग',
+          'accepted': 'स्वीकार किया',
+          'preparing': 'तैयार हो रहा है',
+          'ready': 'तैयार',
+          'completed': 'पूरा हुआ',
+          'rejected': 'रिजेक्ट',
+          'payNow': 'अभी पे करें',
+          'payAtCounter': 'काउंटर पर पे करें',
+          'pos': 'POS',
+          'posOrder': 'POS ऑर्डर',
+          'onlineOrder': 'ऑनलाइन ऑर्डर',
+          'customerIsHere': 'ग्राहक यहाँ है',
+          'new': 'नया',
+          'order': 'ऑर्डर',
+          'items': 'आइटम',
+          'customer': 'ग्राहक',
+          'phone': 'फ़ोन',
+          'status': 'स्टेटस',
+          'paymentMethod': 'पेमेंट तरीका',
+          'paymentStatus': 'पेमेंट स्टेटस',
+          'skipLine': 'लाइन छोड़ें',
+          'customerHere': 'ग्राहक यहाँ है',
+          'arrivedAt': 'आया समय',
+          'distance': 'दूरी',
+          'customerLocationReceived': 'ग्राहक लोकेशन मिली',
+          'viewMap': 'मैप देखें',
+          'total': 'कुल',
+          'cashReceived': 'कैश मिला',
+          'changeDue': 'बकाया चेंज',
+          'transaction': 'लेन-देन',
+          'completeWord': 'पूरा',
+          'accept': 'स्वीकार',
+          'reject': 'रिजेक्ट',
+          'complete': 'पूरा करें',
+          'paymentOptions': 'पेमेंट विकल्प',
+          'paymentReceived': 'पेमेंट मिला',
+          'share': 'शेयर',
+          'call': 'कॉल',
+          'returning': 'वापस आया',
+          'visits': 'विज़िट',
+          'newCustomer': 'नया ग्राहक',
+          'reward': 'रिवॉर्ड',
+          'noItems': 'कोई आइटम नहीं',
+          'notSelected': 'चुना नहीं',
+          'unpaid': 'पेमेंट बाकी',
+          'paid': 'पेमेंट हो गया',
+          'waitingApproval': 'ओनर अप्रूवल का इंतज़ार',
+          'waitingPaymentOptions': 'पेमेंट विकल्प भेजने का इंतज़ार',
+          'readOrder': 'ऑर्डर सुनें',
+        }[key] ?? key;
+      case 'pa':
+        return {
+          'orders': 'ਆਰਡਰ',
+          'orderWord': 'ਆਰਡਰ',
+          'today': 'ਅੱਜ',
+          'week': 'ਹਫ਼ਤਾ',
+          'month': 'ਮਹੀਨਾ',
+          'year': 'ਸਾਲ',
+          'showFilters': 'ਫਿਲਟਰ ਵੇਖਾਓ',
+          'hideFilters': 'ਫਿਲਟਰ ਲੁਕਾਓ',
+          'searchOrders': 'ਆਰਡਰ ਖੋਜੋ',
+          'dateRange': 'ਤਾਰੀਖ ਰੇਂਜ',
+          'clearDateRange': 'ਤਾਰੀਖ ਰੇਂਜ ਹਟਾਓ',
+          'noOrdersFound': 'ਕੋਈ ਆਰਡਰ ਨਹੀਂ ਮਿਲਿਆ',
+          'all': 'ਸਾਰੇ',
+          'pending': 'ਪੈਂਡਿੰਗ',
+          'accepted': 'ਸਵੀਕਾਰ ਕੀਤਾ',
+          'preparing': 'ਤਿਆਰ ਹੋ ਰਿਹਾ',
+          'ready': 'ਤਿਆਰ',
+          'completed': 'ਪੂਰਾ ਹੋਇਆ',
+          'rejected': 'ਰਿਜੈਕਟ',
+          'payNow': 'ਹੁਣ ਪੇ ਕਰੋ',
+          'payAtCounter': 'ਕਾਊਂਟਰ ਤੇ ਪੇ ਕਰੋ',
+          'pos': 'POS',
+          'posOrder': 'POS ਆਰਡਰ',
+          'onlineOrder': 'ਆਨਲਾਈਨ ਆਰਡਰ',
+          'customerIsHere': 'ਗਾਹਕ ਇੱਥੇ ਹੈ',
+          'new': 'ਨਵਾਂ',
+          'order': 'ਆਰਡਰ',
+          'items': 'ਆਈਟਮਾਂ',
+          'customer': 'ਗਾਹਕ',
+          'phone': 'ਫ਼ੋਨ',
+          'status': 'ਸਟੇਟਸ',
+          'paymentMethod': 'ਪੇਮੈਂਟ ਤਰੀਕਾ',
+          'paymentStatus': 'ਪੇਮੈਂਟ ਸਟੇਟਸ',
+          'skipLine': 'ਲਾਈਨ ਛੱਡੋ',
+          'customerHere': 'ਗਾਹਕ ਇੱਥੇ ਹੈ',
+          'arrivedAt': 'ਆਇਆ ਸਮਾਂ',
+          'distance': 'ਦੂਰੀ',
+          'customerLocationReceived': 'ਗਾਹਕ ਦੀ ਲੋਕੇਸ਼ਨ ਮਿਲੀ',
+          'viewMap': 'ਮੈਪ ਵੇਖੋ',
+          'total': 'ਕੁੱਲ',
+          'cashReceived': 'ਕੈਸ਼ ਮਿਲਿਆ',
+          'changeDue': 'ਚੇਂਜ ਬਾਕੀ',
+          'transaction': 'ਲੈਣ-ਦੇਣ',
+          'completeWord': 'ਪੂਰਾ',
+          'accept': 'ਸਵੀਕਾਰ',
+          'reject': 'ਰਿਜੈਕਟ',
+          'complete': 'ਪੂਰਾ ਕਰੋ',
+          'paymentOptions': 'ਪੇਮੈਂਟ ਵਿਕਲਪ',
+          'paymentReceived': 'ਪੇਮੈਂਟ ਮਿਲੀ',
+          'share': 'ਸ਼ੇਅਰ',
+          'call': 'ਕਾਲ',
+          'returning': 'ਵਾਪਸ ਆਇਆ',
+          'visits': 'ਵਿਜ਼ਿਟ',
+          'newCustomer': 'ਨਵਾਂ ਗਾਹਕ',
+          'reward': 'ਰਿਵਾਰਡ',
+          'noItems': 'ਕੋਈ ਆਈਟਮ ਨਹੀਂ',
+          'notSelected': 'ਚੁਣਿਆ ਨਹੀਂ',
+          'unpaid': 'ਪੇਮੈਂਟ ਬਾਕੀ',
+          'paid': 'ਪੇਮੈਂਟ ਹੋ ਗਈ',
+          'waitingApproval': 'ਓਨਰ ਅਪ੍ਰੂਵਲ ਦੀ ਉਡੀਕ',
+          'waitingPaymentOptions': 'ਪੇਮੈਂਟ ਵਿਕਲਪ ਭੇਜਣ ਦੀ ਉਡੀਕ',
+          'readOrder': 'ਆਰਡਰ ਸੁਣੋ',
+        }[key] ?? key;
+      default:
+        return {
+          'orders': 'Orders',
+          'orderWord': 'orders',
+          'today': 'Today',
+          'week': 'Week',
+          'month': 'Month',
+          'year': 'Year',
+          'showFilters': 'Show Filters',
+          'hideFilters': 'Hide Filters',
+          'searchOrders': 'Search orders',
+          'dateRange': 'Date Range',
+          'clearDateRange': 'Clear Date Range',
+          'noOrdersFound': 'No orders found',
+          'all': 'All',
+          'pending': 'Pending',
+          'accepted': 'Accepted',
+          'preparing': 'Preparing',
+          'ready': 'Ready',
+          'completed': 'Completed',
+          'rejected': 'Rejected',
+          'payNow': 'Pay Now',
+          'payAtCounter': 'Pay at Counter',
+          'pos': 'POS',
+          'posOrder': 'POS Order',
+          'onlineOrder': 'Online Order',
+          'customerIsHere': 'CUSTOMER IS HERE',
+          'new': 'NEW',
+          'order': 'Order',
+          'items': 'Items',
+          'customer': 'Customer',
+          'phone': 'Phone',
+          'status': 'Status',
+          'paymentMethod': 'Payment Method',
+          'paymentStatus': 'Payment Status',
+          'skipLine': 'Skip the Line',
+          'customerHere': 'Customer is here',
+          'arrivedAt': 'Arrived At',
+          'distance': 'Distance',
+          'customerLocationReceived': 'Customer location received',
+          'viewMap': 'View Map',
+          'total': 'Total',
+          'cashReceived': 'Cash Received',
+          'changeDue': 'Change Due',
+          'transaction': 'Transaction',
+          'completeWord': 'Complete',
+          'accept': 'Accept',
+          'reject': 'Reject',
+          'complete': 'Complete',
+          'paymentOptions': 'Payment Options',
+          'paymentReceived': 'Payment Received',
+          'share': 'Share',
+          'call': 'Call',
+          'returning': 'Returning',
+          'visits': 'visits',
+          'newCustomer': 'New Customer',
+          'reward': 'Reward',
+          'noItems': 'No items',
+          'notSelected': 'Not selected',
+          'unpaid': 'Unpaid',
+          'paid': 'Paid',
+          'waitingApproval': 'Waiting for owner approval',
+          'waitingPaymentOptions': 'Waiting to send payment options',
+          'readOrder': 'Read order',
+        }[key] ?? key;
+    }
+  }
+
+  String _displayStatusText(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'pending':
+        return _txt('pending');
+      case 'accepted':
+        return _txt('accepted');
+      case 'preparing':
+        return _txt('preparing');
+      case 'ready':
+        return _txt('ready');
+      case 'completed':
+        return _txt('completed');
+      case 'rejected':
+        return _txt('rejected');
+      default:
+        return status;
+    }
+  }
+
+  String _displayPaymentText(String status) {
+    final clean = status.trim();
+    switch (clean.toLowerCase()) {
+      case 'paid':
+        return _txt('paid');
+      case 'unpaid':
+        return _txt('unpaid');
+      case 'not selected':
+        return _txt('notSelected');
+      case 'pay at counter':
+        return _txt('payAtCounter');
+      case 'waiting for owner approval':
+        return _txt('waitingApproval');
+      case 'waiting to send payment options':
+        return _txt('waitingPaymentOptions');
+      case 'payment request sent':
+      case 'payment sent':
+        return _txt('paymentOptions');
+      default:
+        return clean;
+    }
+  }
+
+  Future<void> _setupOrdersVoice() async {
+    switch (AppText.language) {
+      case 'es':
+        await _ordersTts.setLanguage('es-ES');
+        break;
+      case 'hi':
+        await _ordersTts.setLanguage('hi-IN');
+        break;
+      case 'pa':
+        await _ordersTts.setLanguage('pa-IN');
+        break;
+      default:
+        await _ordersTts.setLanguage('en-US');
+    }
+
+    await _ordersTts.setSpeechRate(0.43);
+    await _ordersTts.setPitch(1.08);
+    await _ordersTts.setVolume(1.0);
+  }
+
+  Future<void> _toggleSpeakOrder(String orderId, String text) async {
+    final clean = text.trim();
+    if (clean.isEmpty) return;
+
+    await _setupOrdersVoice();
+
+    if (_isSpeakingOrder && _speakingOrderId == orderId) {
+      await _ordersTts.stop();
+      if (!mounted) return;
+      setState(() {
+        _isSpeakingOrder = false;
+        _speakingOrderId = '';
+      });
+      return;
+    }
+
+    await _ordersTts.stop();
+
+    if (!mounted) return;
+    setState(() {
+      _isSpeakingOrder = true;
+      _speakingOrderId = orderId;
+    });
+
+    await _ordersTts.speak(clean);
+
+    _ordersTts.setCompletionHandler(() {
+      if (!mounted) return;
+      setState(() {
+        _isSpeakingOrder = false;
+        _speakingOrderId = '';
+      });
+    });
+
+    _ordersTts.setCancelHandler(() {
+      if (!mounted) return;
+      setState(() {
+        _isSpeakingOrder = false;
+        _speakingOrderId = '';
+      });
+    });
+  }
+
+  String _buildOwnerOrderSpeech({
+    required int index,
+    required String business,
+    required String customer,
+    required String items,
+    required String total,
+    required String status,
+    required String paymentMethod,
+    required String paymentStatus,
+  }) {
+    final orderNumber = index + 1;
+    final safeBusiness = business.trim().isEmpty ? _txt('orders') : business;
+    final safeCustomer = customer.trim().isEmpty ? 'N/A' : customer;
+
+    switch (AppText.language) {
+      case 'es':
+        return 'Pedido número $orderNumber de $safeBusiness. Cliente: $safeCustomer. Estado: ${_displayStatusText(status)}. Artículos: $items. Total: $total dólares. Pago: $paymentStatus. Método: $paymentMethod.';
+      case 'hi':
+        return 'ऑर्डर नंबर $orderNumber, $safeBusiness से। ग्राहक: $safeCustomer। स्टेटस: ${_displayStatusText(status)}। आइटम: $items। कुल: $total डॉलर। पेमेंट: $paymentStatus। तरीका: $paymentMethod।';
+      case 'pa':
+        return 'ਆਰਡਰ ਨੰਬਰ $orderNumber, $safeBusiness ਤੋਂ। ਗਾਹਕ: $safeCustomer। ਸਟੇਟਸ: ${_displayStatusText(status)}। ਆਈਟਮਾਂ: $items। ਕੁੱਲ: $total ਡਾਲਰ। ਪੇਮੈਂਟ: $paymentStatus। ਤਰੀਕਾ: $paymentMethod।';
+      default:
+        return 'Order number $orderNumber from $safeBusiness. Customer: $safeCustomer. Status: $status. Items: $items. Total: $total dollars. Payment: $paymentStatus. Method: $paymentMethod.';
+    }
+  }
+
 
   void _updateStatus(int index, String newStatus) {
     setState(() {
@@ -783,7 +1187,7 @@ class _OrdersPageState extends State<OrdersPage> {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
-        label: Text(label),
+        label: Text(label == 'All' ? _txt('all') : _displayStatusText(label)),
         selected: isSelected,
         onSelected: (_) {
           setState(() {
@@ -799,7 +1203,15 @@ class _OrdersPageState extends State<OrdersPage> {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
-        label: Text(type),
+        label: Text(
+          type == 'All'
+              ? _txt('all')
+              : type == 'Pay Now'
+                  ? _txt('payNow')
+                  : type == 'Pay at Counter'
+                      ? _txt('payAtCounter')
+                      : _txt('pos'),
+        ),
         selected: isSelected,
         onSelected: (_) {
           setState(() {
@@ -1104,7 +1516,7 @@ class _OrdersPageState extends State<OrdersPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
+      appBar: AppBar(title: Text(_txt('orders'))),
       body: Column(
         children: [
           const SizedBox(height: 8),
@@ -1122,8 +1534,8 @@ class _OrdersPageState extends State<OrdersPage> {
                 children: [
                   Expanded(
                     child: _buildCompactStat(
-                      title: 'Today',
-                      value: '${todayStats['count']} orders',
+                      title: _txt('today'),
+                      value: '${todayStats['count']} ${_txt('orderWord')}',
                       subValue: '\$${todayStats['sales'].toStringAsFixed(2)}',
                       icon: Icons.today,
                     ),
@@ -1131,8 +1543,8 @@ class _OrdersPageState extends State<OrdersPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildCompactStat(
-                      title: 'Week',
-                      value: '${weekStats['count']} orders',
+                      title: _txt('week'),
+                      value: '${weekStats['count']} ${_txt('orderWord')}',
                       subValue: '\$${weekStats['sales'].toStringAsFixed(2)}',
                       icon: Icons.calendar_view_week,
                     ),
@@ -1140,8 +1552,8 @@ class _OrdersPageState extends State<OrdersPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildCompactStat(
-                      title: 'Month',
-                      value: '${monthStats['count']} orders',
+                      title: _txt('month'),
+                      value: '${monthStats['count']} ${_txt('orderWord')}',
                       subValue: '\$${monthStats['sales'].toStringAsFixed(2)}',
                       icon: Icons.calendar_month,
                     ),
@@ -1149,8 +1561,8 @@ class _OrdersPageState extends State<OrdersPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildCompactStat(
-                      title: 'Year',
-                      value: '${yearStats['count']} orders',
+                      title: _txt('year'),
+                      value: '${yearStats['count']} ${_txt('orderWord')}',
                       subValue: '\$${yearStats['sales'].toStringAsFixed(2)}',
                       icon: Icons.insights,
                     ),
@@ -1178,7 +1590,7 @@ class _OrdersPageState extends State<OrdersPage> {
                       _showFilters ? Icons.expand_less : Icons.tune,
                       size: 18,
                     ),
-                    label: Text(_showFilters ? 'Hide Filters' : 'Show Filters'),
+                    label: Text(_showFilters ? _txt('hideFilters') : _txt('showFilters')),
                   ),
                 ),
               ],
@@ -1237,7 +1649,7 @@ class _OrdersPageState extends State<OrdersPage> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Search orders',
+                      hintText: _txt('searchOrders'),
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _searchQuery.trim().isEmpty
                           ? null
@@ -1262,13 +1674,13 @@ class _OrdersPageState extends State<OrdersPage> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  tooltip: 'Date Range',
+                  tooltip: _txt('dateRange'),
                   onPressed: _pickDateRange,
                   icon: const Icon(Icons.date_range),
                 ),
                 if (_selectedDateRange != null)
                   IconButton(
-                    tooltip: 'Clear Date Range',
+                    tooltip: _txt('clearDateRange'),
                     onPressed: _clearDateRange,
                     icon: const Icon(Icons.close),
                   ),
@@ -1280,10 +1692,10 @@ class _OrdersPageState extends State<OrdersPage> {
 
           Expanded(
             child: filteredIndices.isEmpty
-                ? const Center(
+                ? Center(
               child: Text(
-                'No orders found',
-                style: TextStyle(fontSize: 16),
+                _txt('noOrdersFound'),
+                style: const TextStyle(fontSize: 16),
               ),
             )
                 :ListView.builder(
@@ -1368,22 +1780,45 @@ class _OrdersPageState extends State<OrdersPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          business,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                business,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: _txt('readOrder'),
+                              onPressed: () => _toggleSpeakOrder(
+                                'owner_order_$index',
+                                _buildOwnerOrderSpeech(
+                                  index: index,
+                                  business: business,
+                                  customer: customer,
+                                  items: items,
+                                  total: total,
+                                  status: status,
+                                  paymentMethod: paymentMethod,
+                                  paymentStatus: _displayPaymentText(paymentStatus),
+                                ),
+                              ),
+                              icon: const Icon(Icons.volume_up, color: Colors.orange),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             Text(
                               isPosOrder
-                                  ? 'POS Order'
+                                  ? _txt('posOrder')
                                   : isHereNow
-                                  ? 'CUSTOMER IS HERE'
-                                  : 'Online Order',
+                                  ? _txt('customerIsHere')
+                                  : _txt('onlineOrder'),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isPosOrder
@@ -1404,9 +1839,9 @@ class _OrdersPageState extends State<OrdersPage> {
                                   color: Colors.red,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text(
-                                  'NEW',
-                                  style: TextStyle(
+                                child: Text(
+                                  _txt('new'),
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -1417,17 +1852,17 @@ class _OrdersPageState extends State<OrdersPage> {
                         ),
                         const SizedBox(height: 8),
                         _infoLine(
-                          'Order',
+                          _txt('order'),
                           '#${index + 1} • ${_formatOrderDateTime(order, index)}',
                           valueColor: Colors.grey.shade800,
                           valueWeight: FontWeight.w600,
                         ),
-                        _infoLine('Items', items),
+                        _infoLine(_txt('items'), items),
                         Row(
                           children: [
                             Expanded(
                               child: _infoLine(
-                                'Customer',
+                                _txt('customer'),
                                 customer.isEmpty ? 'N/A' : customer,
                               ),
                             ),
@@ -1457,8 +1892,8 @@ class _OrdersPageState extends State<OrdersPage> {
                                       children: [
                                         Text(
                                           isReturningCustomer
-                                              ? 'Returning • $visits visits'
-                                              : 'New Customer',
+                                              ? '${_txt('returning')} • $visits ${_txt('visits')}'
+                                              : _txt('newCustomer'),
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
@@ -1470,7 +1905,7 @@ class _OrdersPageState extends State<OrdersPage> {
 
                                         if (isReturningCustomer)
                                           Text(
-                                            'Reward $punches/5',
+                                            '${_txt('reward')} $punches/5',
                                             style: TextStyle(
                                               fontSize: 10,
                                               color: Colors.orange.shade700,
@@ -1484,10 +1919,10 @@ class _OrdersPageState extends State<OrdersPage> {
                               ),
                           ],
                         ),
-                        _infoLine('Phone', phone.isEmpty ? 'N/A' : phone),
+                        _infoLine(_txt('phone'), phone.isEmpty ? 'N/A' : phone),
                         _infoLine(
-                          'Status',
-                          status,
+                          _txt('status'),
+                          _displayStatusText(status),
                           valueColor: isRejected
                               ? Colors.red
                               : isCompleted
@@ -1495,13 +1930,13 @@ class _OrdersPageState extends State<OrdersPage> {
                               : Colors.black87,
                         ),
                         _infoLine(
-                          'Payment Method',
+                          _txt('paymentMethod'),
                           paymentMethod,
                           valueColor: Colors.indigo,
                         ),
                         _infoLine(
-                          'Payment Status',
-                          paymentStatus,
+                          _txt('paymentStatus'),
+                          _displayPaymentText(paymentStatus),
                           valueColor: isPaid
                               ? Colors.green
                               : isPaymentSent
@@ -1512,8 +1947,8 @@ class _OrdersPageState extends State<OrdersPage> {
                         ),
                         if (isHereNow)
                           _infoLine(
-                            'Skip the Line',
-                            'Customer is here',
+                            _txt('skipLine'),
+                            _txt('customerHere'),
                             valueColor: Colors.green,
                             valueWeight: FontWeight.bold,
                           ),
@@ -1522,14 +1957,14 @@ class _OrdersPageState extends State<OrdersPage> {
                             .trim()
                             .isNotEmpty)
                           _infoLine(
-                            'Arrived At',
+                            _txt('arrivedAt'),
                             (order['arrivedAt'] ?? '').toString(),
                             valueColor: Colors.green,
                             valueWeight: FontWeight.w600,
                           ),
                         if (order['arrivalDistanceMeters'] != null)
                           _infoLine(
-                            'Distance',
+                            _txt('distance'),
                             '${((order['arrivalDistanceMeters'] as num).toDouble()).toStringAsFixed(0)} m',
                             valueColor: Colors.green,
                             valueWeight: FontWeight.w600,
@@ -1554,29 +1989,29 @@ class _OrdersPageState extends State<OrdersPage> {
                               children: [
                                 const Icon(Icons.location_on, color: Colors.green),
                                 const SizedBox(width: 10),
-                                const Expanded(
+                                 Expanded(
                                   child: Text(
-                                    'Customer location received',
-                                    style: TextStyle(fontWeight: FontWeight.w600),
+                                    _txt('customerLocationReceived'),
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                 ),
                                 OutlinedButton.icon(
                                   onPressed: () => _showArrivalMapDialog(order),
                                   icon: const Icon(Icons.map),
-                                  label: const Text('View Map'),
+                                  label: Text(_txt('viewMap')),
                                 ),
                               ],
                             ),
                           ),
                         if (total.trim().isNotEmpty)
                           _infoLine(
-                            'Total',
+                            _txt('total'),
                             '\$$total',
                             valueWeight: FontWeight.bold,
                           ),
                         if ((order['cashReceived'] ?? '').toString().trim().isNotEmpty)
                           _infoLine(
-                            'Cash Received',
+                            _txt('cashReceived'),
                             '\$${order['cashReceived']}',
                             valueColor: Colors.green,
                             valueWeight: FontWeight.w600,
@@ -1584,15 +2019,15 @@ class _OrdersPageState extends State<OrdersPage> {
 
                         if ((order['changeDue'] ?? '').toString().trim().isNotEmpty)
                           _infoLine(
-                            'Change Due',
+                            _txt('changeDue'),
                             '\$${order['changeDue']}',
                             valueColor: Colors.orange,
                             valueWeight: FontWeight.w600,
                           ),
                         if (transactionComplete)
                           _infoLine(
-                            'Transaction',
-                            'Complete',
+                            _txt('transaction'),
+                            _txt('completeWord'),
                             valueColor: Colors.green,
                             valueWeight: FontWeight.bold,
                           ),
@@ -1605,43 +2040,43 @@ class _OrdersPageState extends State<OrdersPage> {
                               onPressed: status == 'Pending'
                                   ? () => _updateStatus(index, 'Accepted')
                                   : null,
-                              child: const Text('Accept'),
+                              child: Text(_txt('accept')),
                             ),
                             ElevatedButton(
                               onPressed: status == 'Pending'
                                   ? () => _rejectOrder(index)
                                   : null,
-                              child: const Text('Reject'),
+                              child: Text(_txt('reject')),
                             ),
                             ElevatedButton(
                               onPressed: canStartPreparing
                                   ? () => _updateStatus(index, 'Preparing')
                                   : null,
-                              child: const Text('Preparing'),
+                              child: Text(_txt('preparing')),
                             ),
                             ElevatedButton(
                               onPressed: isPreparing
                                   ? () => _updateStatus(index, 'Ready')
                                   : null,
-                              child: const Text('Ready'),
+                              child: Text(_txt('ready')),
                             ),
                             ElevatedButton(
                               onPressed: isReady
                                   ? () => _updateStatus(index, 'Completed')
                                   : null,
-                              child: const Text('Complete'),
+                              child: Text(_txt('complete')),
                             ),
                             if (showSendPaymentOptions)
                               OutlinedButton(
                                 onPressed: () =>
                                     _showPaymentOptionsDialog(index),
-                                child: const Text('Payment Options'),
+                                child: Text(_txt('paymentOptions')),
                               ),
                             if (showPaymentReceived)
                               OutlinedButton(
                                 onPressed: () =>
                                     _markPaymentReceived(index),
-                                child: const Text('Payment Received'),
+                                child: Text(_txt('paymentReceived')),
                               ),
                             if (phone.trim().isNotEmpty) ...[
                               OutlinedButton.icon(
@@ -1654,7 +2089,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   Share.share(message);
                                 },
                                 icon: const Icon(Icons.share),
-                                label: const Text('Share'),
+                                label: Text(_txt('share')),
                               ),
                               OutlinedButton.icon(
                                 onPressed: () async {
@@ -1678,7 +2113,7 @@ class _OrdersPageState extends State<OrdersPage> {
                                   }
                                 },
                                 icon: const Icon(Icons.call),
-                                label: const Text('Call'),
+                                label: Text(_txt('call')),
                               ),
                             ],
                           ],

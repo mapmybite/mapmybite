@@ -1942,6 +1942,7 @@ class _TruckPageState extends State<TruckPage> {
                     builder: (_) => AdminPage(
                       vendors: _allVendors,
                       isDarkMode: _isDarkMode,
+                      adminRole: 'owner',
                     ),
                   ),
                 );

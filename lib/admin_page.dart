@@ -5,11 +5,13 @@ import 'owner_customer_data.dart';
 class AdminPage extends StatefulWidget {
   final List<Map<String, dynamic>> vendors;
   final bool isDarkMode;
+  final String adminRole;
 
   const AdminPage({
     super.key,
     required this.vendors,
     required this.isDarkMode,
+    required this.adminRole,
   });
 
   @override
@@ -411,12 +413,26 @@ void initState() {
         appBar: AppBar(
           backgroundColor: Colors.black,
           iconTheme: const IconThemeData(color: Colors.white),
-          title: const Text(
-            'MapMyBite Admin',
-            style: TextStyle(
-              color: Colors.orange,
-              fontWeight: FontWeight.bold,
-            ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'MapMyBite Admin',
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                widget.adminRole == 'owner'
+                    ? 'Owner Access'
+                    : 'Team Access',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                ),
+              ),
+            ],
           ),
           bottom: TabBar(
             controller: _tabController,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'app_text.dart';
 import 'truck_page.dart';
 import 'customer_home_page.dart';
+import 'admin_page.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -16,6 +17,8 @@ class _WelcomePageState extends State<WelcomePage>
   late AnimationController _floatController;
   late AnimationController _pulseController;
   bool _isDarkMode = false;
+  int _adminTapCount = 0;
+  String _adminRole = '';
 
   Color get _welcomeBg1 => _isDarkMode ? Colors.black : const Color(0xFFFFF7EF);
   Color get _welcomeBg2 => _isDarkMode ? Colors.grey.shade900 : const Color(0xFFFFEFE5);
@@ -234,7 +237,16 @@ class _WelcomePageState extends State<WelcomePage>
                     _topBar(),
                     _hero(float: float, pulse: pulse, wide: wide),
                     const SizedBox(height: 1),
-                    Text.rich(
+                    GestureDetector(
+                      onTap: () {
+                        _adminTapCount++;
+
+                        if (_adminTapCount >= 7) {
+                          _adminTapCount = 0;
+                          _showAdminLoginDialog();
+                        }
+                      },
+                      child: Text.rich(
                       TextSpan(
                         children: [
                           TextSpan(
@@ -261,7 +273,8 @@ class _WelcomePageState extends State<WelcomePage>
                         ],
                       ),
                       textAlign: TextAlign.center,
-                    ),
+                      ),
+                     ),
                     const SizedBox(height: 2),
                     Text(
                       _t(
@@ -1022,6 +1035,93 @@ class _WelcomePageState extends State<WelcomePage>
           offset: const Offset(0, 5),
         ),
       ],
+    );
+  }
+  void _showAdminLoginDialog() {
+    final pinController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: _cardColor,
+          title: Text(
+            'Admin Access',
+            style: TextStyle(color: _mainText),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Enter Owner or Team PIN',
+                style: TextStyle(color: _subText),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: pinController,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: _mainText),
+                decoration: InputDecoration(
+                  hintText: 'Enter PIN',
+                  hintStyle: TextStyle(color: _subText),
+                  filled: true,
+                  fillColor: _isDarkMode
+                      ? Colors.grey.shade900
+                      : Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+              ),
+              onPressed: () {
+                final pin = pinController.text.trim();
+
+                if (pin == '1981') {
+                  _adminRole = 'owner';
+                } else if (pin == '2026') {
+                  _adminRole = 'team';
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Wrong PIN'),
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminPage(
+                      vendors: const [],
+                      isDarkMode: _isDarkMode,
+                      adminRole: _adminRole,
+                    ),
+                  ),
+                );
+              },
+              child: const Text(
+                'Login',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

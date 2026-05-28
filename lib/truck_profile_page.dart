@@ -17,7 +17,7 @@ import 'local_notification_service.dart';
 import 'orders_page.dart';
 import 'favorite_data.dart';
 import 'owner_customer_data.dart';
-
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 
 
 class TruckProfilePage extends StatefulWidget {
@@ -639,6 +639,53 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     if (!mounted) return;
     _showPosCheckoutBottomSheet();
   }
+ String _receiptLine() => '--------------------------------\n';
+
+ String _receiptRow(String left, String right) {
+   const width = 32;
+   final space = width - left.length - right.length;
+   return '$left${' ' * (space > 1 ? space : 1)}$right\n';
+ }
+
+ Future<void> _printPosReceipt(Map<String, dynamic> order) async {
+   final connected = await PrintBluetoothThermal.connectionStatus;
+
+   if (!connected) {
+     ScaffoldMessenger.of(context).showSnackBar(
+       const SnackBar(content: Text('Printer not connected')),
+     );
+     return;
+   }
+
+   final receipt = StringBuffer();
+
+   receipt.writeln('          MAPMYBITE');
+   receipt.writeln('        POS RECEIPT');
+   receipt.write(_receiptLine());
+   receipt.writeln('Business: ${order['business']}');
+   receipt.writeln('Customer: ${order['customer']}');
+   receipt.writeln('Phone: ${order['phone']}');
+   receipt.writeln('Date: ${order['date']} ${order['time']}');
+   receipt.write(_receiptLine());
+
+   receipt.writeln(order['items'] ?? '');
+
+   receipt.write(_receiptLine());
+   receipt.write(_receiptRow('Payment', '${order['paymentMethod']}'));
+   receipt.write(_receiptRow('Total', '\$${order['total']}'));
+
+   if ((order['cashReceived'] ?? '').toString().isNotEmpty) {
+     receipt.write(_receiptRow('Cash', '\$${order['cashReceived']}'));
+     receipt.write(_receiptRow('Change', '\$${order['changeDue']}'));
+   }
+
+   receipt.write(_receiptLine());
+   receipt.writeln('Thank you for your order!');
+   receipt.writeln('Powered by MapMyBite');
+   receipt.writeln('\n\n\n');
+
+   await PrintBluetoothThermal.writeBytes(receipt.toString().codeUnits);
+ }
   Future<void> _editProfile() async {
     final result = await Navigator.push(
       context,
@@ -2181,6 +2228,42 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                     const SizedBox(height: 18),
                     SizedBox(
                       width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final devices =
+                              await PrintBluetoothThermal.pairedBluetooths;
+
+                          if (devices.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('No paired printer found'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          final connected = await PrintBluetoothThermal.connect(
+                            macPrinterAddress: '86:67:7A:C2:A6:BD',
+                          );
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                connected
+                                    ? 'Printer connected'
+                                    : 'Printer connection failed',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.print),
+                        label: const Text('Connect Printer'),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
                           final now = DateTime.now();
@@ -2196,7 +2279,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             totalSpent: _selectedMenuTotal,
                           );
 
-                          OrderData.orders.add({
+                          final posOrder = {
                             'business': widget.truck['title'] ?? '',
                             'customer': customerNameController.text.trim().isEmpty
                                 ? 'Walk-in Customer'
@@ -2228,7 +2311,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             'orderSource': 'owner_pos',
                             'createdAt': now.toIso8601String(),
 
-                          });
+                          };
+
+                          OrderData.orders.add(posOrder);
+                          _printPosReceipt(posOrder);
 
                           Navigator.pop(bottomSheetContext);
 

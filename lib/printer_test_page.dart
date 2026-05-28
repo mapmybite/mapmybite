@@ -20,59 +20,84 @@ class _PrinterTestPageState extends State<PrinterTestPage> {
   }
 
   Future<void> _loadDevices() async {
-    final List<BluetoothInfo> bondedDevices =
-        await PrintBluetoothThermal.pairedBluetooths;
+    final bondedDevices = await PrintBluetoothThermal.pairedBluetooths;
 
     setState(() {
       devices = bondedDevices;
+      if (devices.isNotEmpty) {
+        selectedDevice = devices.first;
+      }
     });
   }
 
- Future<void> _connectPrinter() async {
-   setState(() {
-     status = 'Connecting...';
-   });
-
-   final bool connected = await PrintBluetoothThermal.connect(
-     macPrinterAddress: '86:67:7A:C2:A6:BD',
-   );
-
-   setState(() {
-     status = connected ? 'Connected' : 'Connection failed';
-   });
- }
-
-  Future<void> _printTest() async {
-    final bool connected = await PrintBluetoothThermal.connectionStatus;
-
-    if (!connected) {
-      setState(() {
-        status = 'Printer not connected';
-      });
+  Future<void> _connectPrinter() async {
+    if (selectedDevice == null) {
+      setState(() => status = 'Please select a printer first');
       return;
     }
 
-    final String receipt = '''
-        MapMyBite Test
-------------------------------
-Burger x2
-Fries x1
-------------------------------
-Thank You!
+    setState(() => status = 'Connecting...');
 
+    final connected = await PrintBluetoothThermal.connect(
+      macPrinterAddress: selectedDevice!.macAdress,
+    );
 
+    setState(() {
+      status = connected
+          ? 'Connected to ${selectedDevice!.name}'
+          : 'Connection failed';
+    });
+  }
 
+  String _line() => '--------------------------------\n';
 
-''';
+  String _row(String left, String right) {
+    const width = 32;
+    final space = width - left.length - right.length;
+    return '$left${' ' * (space > 1 ? space : 1)}$right\n';
+  }
 
-    await PrintBluetoothThermal.writeBytes(receipt.codeUnits);
+  Future<void> _printTest() async {
+    final connected = await PrintBluetoothThermal.connectionStatus;
+
+    if (!connected) {
+      setState(() => status = 'Printer not connected');
+      return;
+    }
+
+    final receipt = StringBuffer();
+
+    receipt.writeln('          MAPMYBITE');
+    receipt.writeln('      POS TEST RECEIPT');
+    receipt.write(_line());
+    receipt.writeln('Business: Taco Truck Demo');
+    receipt.writeln('Order #: 1001');
+    receipt.writeln('Customer: Walk-in');
+    receipt.writeln('Payment: Pay at Counter');
+    receipt.write(_line());
+
+    receipt.write(_row('2 x Veggie Taco', '\$7.98'));
+    receipt.write(_row('1 x Fries', '\$3.99'));
+    receipt.write(_row('1 x Mango Drink', '\$4.50'));
+
+    receipt.write(_line());
+    receipt.write(_row('Subtotal', '\$16.47'));
+    receipt.write(_row('Tax', '\$1.36'));
+    receipt.write(_row('TOTAL', '\$17.83'));
+    receipt.write(_line());
+
+    receipt.writeln('Thank you for your order!');
+    receipt.writeln('Powered by MapMyBite');
+    receipt.writeln('\n\n\n');
+
+    await PrintBluetoothThermal.writeBytes(receipt.toString().codeUnits);
+
+    setState(() => status = 'Receipt printed');
   }
 
   Future<void> _disconnectPrinter() async {
     await PrintBluetoothThermal.disconnect;
-    setState(() {
-      status = 'Disconnected';
-    });
+    setState(() => status = 'Disconnected');
   }
 
   @override
@@ -128,6 +153,13 @@ Thank You!
             ElevatedButton(
               onPressed: _disconnectPrinter,
               child: const Text('Disconnect'),
+            ),
+
+            const SizedBox(height: 20),
+
+            ElevatedButton(
+              onPressed: _loadDevices,
+              child: const Text('Refresh Printer List'),
             ),
           ],
         ),

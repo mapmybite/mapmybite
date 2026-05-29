@@ -9,6 +9,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'owner_customer_data.dart';
 import 'app_text.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -26,6 +28,79 @@ class _OrdersPageState extends State<OrdersPage> {
   final ScrollController _ordersScrollController = ScrollController();
   bool _showStats = true;
   double _lastScrollOffset = 0;
+  String _receiptLine() {
+    return '--------------------------------\n';
+  }
+
+  String _receiptRow(String left, String right) {
+    final cleanLeft = left.length > 16 ? left.substring(0, 16) : left;
+    final cleanRight = right.length > 14 ? right.substring(0, 14) : right;
+
+    final spaces = 32 - cleanLeft.length - cleanRight.length;
+    return '$cleanLeft${' ' * (spaces > 1 ? spaces : 1)}$cleanRight\n';
+  }
+
+  Future<void> _printPosReceipt(Map<String, dynamic> order) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedMac = prefs.getString('saved_printer_mac');
+
+    if (savedMac != null && savedMac.isNotEmpty) {
+      await PrintBluetoothThermal.connect(macPrinterAddress: savedMac);
+    }
+
+    final connected = await PrintBluetoothThermal.connectionStatus;
+
+    if (!connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Printer not connected')),
+      );
+      return;
+    }
+
+    final receipt = StringBuffer();
+
+    receipt.writeln('          MAPMYBITE');
+    receipt.writeln('        POS RECEIPT');
+    receipt.write(_receiptLine());
+    receipt.writeln('Business: ${order['business'] ?? ''}');
+    receipt.writeln('Customer: ${order['customer'] ?? ''}');
+
+    if ((order['phone'] ?? '').toString().trim().isNotEmpty) {
+      receipt.writeln('Phone: ${order['phone']}');
+    }
+
+    receipt.writeln('Date: ${order['date'] ?? ''} ${order['time'] ?? ''}');
+    receipt.write(_receiptLine());
+
+    receipt.writeln('ITEMS');
+    receipt.write(_receiptLine());
+    receipt.writeln(order['items'] ?? '');
+
+    receipt.write(_receiptLine());
+    receipt.write(_receiptRow('Payment', '${order['paymentMethod'] ?? ''}'));
+    receipt.write(_receiptRow('TOTAL', '\$${order['total'] ?? ''}'));
+
+    if ((order['cashReceived'] ?? '').toString().trim().isNotEmpty) {
+      receipt.write(_receiptRow('Cash', '\$${order['cashReceived']}'));
+      receipt.write(_receiptRow('Change', '\$${order['changeDue']}'));
+    }
+
+    if ((order['notes'] ?? '').toString().trim().isNotEmpty) {
+      receipt.write(_receiptLine());
+      receipt.writeln('Notes: ${order['notes']}');
+    }
+
+    receipt.write(_receiptLine());
+    receipt.writeln('     Thank you for your order!');
+    receipt.writeln('        Powered by MapMyBite');
+    receipt.writeln('');
+    receipt.writeln('');
+    receipt.writeln('');
+    receipt.writeln('');
+
+    await PrintBluetoothThermal.writeBytes(receipt.toString().codeUnits);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -2078,6 +2153,14 @@ class _OrdersPageState extends State<OrdersPage> {
                                     _markPaymentReceived(index),
                                 child: Text(_txt('paymentReceived')),
                               ),
+                              if (isCompleted)
+                                OutlinedButton.icon(
+                                  onPressed: () async {
+                                    await _printPosReceipt(order);
+                                  },
+                                  icon: const Icon(Icons.print),
+                                  label: const Text('Reprint Receipt'),
+                                ),
                             if (phone.trim().isNotEmpty) ...[
                               OutlinedButton.icon(
                                 onPressed: () {

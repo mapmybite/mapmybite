@@ -18,7 +18,7 @@ import 'orders_page.dart';
 import 'favorite_data.dart';
 import 'owner_customer_data.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TruckProfilePage extends StatefulWidget {
   final Map<String, dynamic> truck;
@@ -47,6 +47,10 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
   double _cashReceived = 0.0;
 
+  bool _printerConnected = false;
+  String? _savedPrinterMac;
+  String? _savedPrinterName;
+  Map<String, dynamic>? _lastPosOrder;
   bool get _isDarkMode => widget.isDarkMode;
   Color get _pageBg => _isDarkMode ? Colors.black : Colors.white;
   Color get _cardBg => _isDarkMode ? Colors.grey.shade900 : Colors.white;
@@ -61,12 +65,46 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
   double get _changeDue => _cashReceived - _selectedMenuTotal;
 
+  Future<void> _loadSavedPrinter() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final mac = prefs.getString('saved_printer_mac');
+    final name = prefs.getString('saved_printer_name');
+
+    if (mac != null && mac.isNotEmpty) {
+      try {
+        final connected = await PrintBluetoothThermal.connect(
+          macPrinterAddress: mac,
+        );
+
+        if (!mounted) return;
+
+        setState(() {
+          _savedPrinterMac = mac;
+          _savedPrinterName = name;
+          _printerConnected = connected;
+        });
+      } catch (_) {
+        if (!mounted) return;
+
+        setState(() {
+          _savedPrinterMac = mac;
+          _savedPrinterName = name;
+          _printerConnected = false;
+        });
+      }
+    }
+  }
+
 
   List<Map<String, dynamic>> _selectedOrderItems = [];
   @override
   void initState() {
     super.initState();
+
     _isFavorite = FavoriteData.isFavorite(widget.truck);
+
+    _loadSavedPrinter();
   }
   Color _planColor(dynamic plan) {
     final p = plan.toString().toLowerCase();
@@ -662,27 +700,41 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
    receipt.writeln('          MAPMYBITE');
    receipt.writeln('        POS RECEIPT');
    receipt.write(_receiptLine());
-   receipt.writeln('Business: ${order['business']}');
-   receipt.writeln('Customer: ${order['customer']}');
-   receipt.writeln('Phone: ${order['phone']}');
-   receipt.writeln('Date: ${order['date']} ${order['time']}');
+   receipt.writeln('Business: ${order['business'] ?? ''}');
+   receipt.writeln('Customer: ${order['customer'] ?? ''}');
+
+   if ((order['phone'] ?? '').toString().trim().isNotEmpty) {
+     receipt.writeln('Phone: ${order['phone']}');
+   }
+
+   receipt.writeln('Date: ${order['date'] ?? ''} ${order['time'] ?? ''}');
    receipt.write(_receiptLine());
 
+   receipt.writeln('ITEMS');
+   receipt.write(_receiptLine());
    receipt.writeln(order['items'] ?? '');
 
    receipt.write(_receiptLine());
-   receipt.write(_receiptRow('Payment', '${order['paymentMethod']}'));
-   receipt.write(_receiptRow('Total', '\$${order['total']}'));
+   receipt.write(_receiptRow('Payment', '${order['paymentMethod'] ?? ''}'));
+   receipt.write(_receiptRow('TOTAL', '\$${order['total'] ?? ''}'));
 
-   if ((order['cashReceived'] ?? '').toString().isNotEmpty) {
+   if ((order['cashReceived'] ?? '').toString().trim().isNotEmpty) {
      receipt.write(_receiptRow('Cash', '\$${order['cashReceived']}'));
      receipt.write(_receiptRow('Change', '\$${order['changeDue']}'));
    }
 
+   if ((order['notes'] ?? '').toString().trim().isNotEmpty) {
+     receipt.write(_receiptLine());
+     receipt.writeln('Notes: ${order['notes']}');
+   }
+
    receipt.write(_receiptLine());
-   receipt.writeln('Thank you for your order!');
-   receipt.writeln('Powered by MapMyBite');
-   receipt.writeln('\n\n\n');
+   receipt.writeln('     Thank you for your order!');
+   receipt.writeln('        Powered by MapMyBite');
+   receipt.writeln('');
+   receipt.writeln('');
+   receipt.writeln('');
+   receipt.writeln('');
 
    await PrintBluetoothThermal.writeBytes(receipt.toString().codeUnits);
  }
@@ -2242,22 +2294,92 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                             return;
                           }
 
-                          final connected = await PrintBluetoothThermal.connect(
-                            macPrinterAddress: '86:67:7A:C2:A6:BD',
+                          final selectedPrinter = await showModalBottomSheet(
+                            context: context,
+                            builder: (pickerContext) {
+                              return SafeArea(
+                                child: ListView(
+                                  shrinkWrap: true,
+                                  children: devices.map((device) {
+                                    return ListTile(
+                                      leading: const Icon(Icons.print),
+                                      title: Text(device.name),
+                                      subtitle: Text(device.macAdress),
+                                      onTap: () {
+                                        Navigator.pop(pickerContext, device);
+                                      },
+                                    );
+                                  }).toList(),
+                                ),
+                              );
+                            },
                           );
+
+                          if (selectedPrinter == null) {
+                            return;
+                          }
+
+                          await PrintBluetoothThermal.disconnect;
+
+                          await PrintBluetoothThermal.connect(
+                            macPrinterAddress: selectedPrinter.macAdress,
+                          );
+
+                          final connected = await PrintBluetoothThermal.connectionStatus;
+
+                          if (connected) {
+                            final prefs = await SharedPreferences.getInstance();
+
+                            await prefs.setString(
+                              'saved_printer_mac',
+                              selectedPrinter.macAdress,
+                            );
+
+                            await prefs.setString(
+                              'saved_printer_name',
+                              selectedPrinter.name,
+                            );
+
+                            setState(() {
+                              _printerConnected = true;
+                              _savedPrinterMac = selectedPrinter.macAdress;
+                              _savedPrinterName = selectedPrinter.name;
+                            });
+
+                            setModalState(() {});
+                          } else {
+                            setState(() {
+                              _printerConnected = false;
+                            });
+
+                            setModalState(() {});
+                          }
+
+                          if (connected) {
+                            await PrintBluetoothThermal.writeBytes(
+                              'MapMyBite printer connected\n\n\n'.codeUnits,
+                            );
+                          }
 
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
                                 connected
-                                    ? 'Printer connected'
+                                    ? 'Printer connected: ${selectedPrinter.name}'
                                     : 'Printer connection failed',
                               ),
                             ),
                           );
                         },
-                        icon: const Icon(Icons.print),
-                        label: const Text('Connect Printer'),
+                        icon: Icon(
+                          Icons.print,
+                          color: _printerConnected ? Colors.green : null,
+                        ),
+                        label: Text(
+                          _printerConnected
+                              ? 'Printer Connected: ${_savedPrinterName ?? ''}'
+                              : 'Connect Printer',
+                        ),
                       ),
                     ),
 
@@ -2314,6 +2436,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                           };
 
                           OrderData.orders.add(posOrder);
+                          _lastPosOrder = posOrder;
                           _printPosReceipt(posOrder);
 
                           Navigator.pop(bottomSheetContext);
@@ -2347,6 +2470,21 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 10),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _lastPosOrder == null
+                            ? null
+                            : () async {
+                                await _printPosReceipt(_lastPosOrder!);
+                              },
+                        icon: const Icon(Icons.receipt_long),
+                        label: const Text('Reprint Last Receipt'),
+                      ),
+                    ),
+
                     const SizedBox(height: 10),
                   ],
                 ),

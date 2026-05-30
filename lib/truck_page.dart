@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geocoding/geocoding.dart';
 import 'dart:async';
 import 'favorite_data.dart';
+import 'vendor_data.dart';
 
 class TruckPage extends StatefulWidget {
   final bool openOwnerPortalOnStart;
@@ -287,7 +288,7 @@ class _TruckPageState extends State<TruckPage> {
   ];
   // Combine all vendors
   List<Map<String, dynamic>> get _allVendors {
-    return [...foodTrucks, ...homeKitchens];
+    return VendorData.allVendors;
   }
 
 // Apply search + cuisine filter
@@ -409,6 +410,13 @@ class _TruckPageState extends State<TruckPage> {
   @override
   void initState() {
     super.initState();
+
+    VendorData.foodTrucks.clear();
+    VendorData.foodTrucks.addAll(foodTrucks);
+
+    VendorData.homeKitchens.clear();
+    VendorData.homeKitchens.addAll(homeKitchens);
+
     _loadIcons();
     _loadFavorites();
     WidgetsBinding.instance.addPostFrameCallback((_) async {

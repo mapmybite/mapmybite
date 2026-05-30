@@ -4,7 +4,7 @@ import 'app_text.dart';
 import 'truck_page.dart';
 import 'customer_home_page.dart';
 import 'admin_page.dart';
-
+import 'vendor_data.dart';
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
 
@@ -1107,7 +1107,7 @@ class _WelcomePageState extends State<WelcomePage>
                   context,
                   MaterialPageRoute(
                     builder: (_) => AdminPage(
-                      vendors: const [],
+                      vendors: VendorData.allVendors,
                       isDarkMode: _isDarkMode,
                       adminRole: _adminRole,
                     ),

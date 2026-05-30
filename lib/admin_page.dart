@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'order_data.dart';
 import 'owner_customer_data.dart';
+import 'truck_page.dart';
+import 'orders_page.dart';
+import 'truck_profile_page.dart';
 
 class AdminPage extends StatefulWidget {
   final List<Map<String, dynamic>> vendors;
@@ -261,6 +264,46 @@ void initState() {
     }).toList();
 
     return _orderRevenue(vendorOrders);
+  }
+
+  List<Map<String, dynamic>> _vendorOrders(String businessName) {
+    return _orders.where((order) {
+      return _lower(order['business']) ==
+          businessName.trim().toLowerCase();
+    }).toList().reversed.toList();
+  }
+
+  List<Map<String, dynamic>> _customerOrders(
+    Map<String, dynamic> customer,
+  ) {
+    final phone = (customer['phone'] ?? '').toString().trim();
+
+    final name =
+        (customer['name'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+
+    return _orders.where((order) {
+      final orderPhone =
+          (order['phone'] ?? '').toString().trim();
+
+      final orderCustomer =
+          (order['customer'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+      if (phone.isNotEmpty && orderPhone == phone) {
+        return true;
+      }
+
+      if (name.isNotEmpty && orderCustomer == name) {
+        return true;
+      }
+
+      return false;
+    }).toList().reversed.toList();
   }
 
   List<Map<String, dynamic>> _topVendors() {
@@ -567,6 +610,43 @@ void initState() {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sectionTitle('Dashboard Overview', 'Tap any card to see details'),
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TruckPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.map),
+                  label: const Text('Map View'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const OrdersPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.receipt_long),
+                  label: const Text('Orders'),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
 
           GridView.count(
             crossAxisCount: 2,
@@ -1626,11 +1706,77 @@ void initState() {
                     _detailLine('Featured', isFeatured ? 'Yes' : 'No'),
                     _detailLine('Orders', _vendorOrderCount(title)),
                     _detailLine('Revenue', _moneyText(_vendorRevenue(title))),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      'Recent Vendor Orders',
+                      style: TextStyle(
+                        color: _text,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    if (_vendorOrders(title).isEmpty)
+                      _emptyText('No orders for this vendor yet.')
+                    else
+                      ..._vendorOrders(title).take(5).map((order) {
+                        return _orderTile(order);
+                      }),
+
+                      if (_vendorOrders(title).isNotEmpty)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            icon: const Icon(Icons.receipt_long),
+                            label: const Text('View All Vendor Orders'),
+                            onPressed: () {
+                              Navigator.pop(context);
+
+                              setState(() {
+                                _searchText = title;
+                                _searchController.text = title;
+                              });
+
+                              _tabController.animateTo(2);
+                            },
+                          ),
+                        ),
+
+                    const SizedBox(height: 12),
+
                     _detailLine('Legal Name', vendor['legalName']),
                     _detailLine('Permit Number', vendor['permitNumber']),
                     _detailLine('Verification Notes', vendor['verificationNotes']),
                     _detailLine('ID Proof Image', vendor['idFrontImage']),
                     _detailLine('Address Proof Image', vendor['addressProofImage']),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TruckProfilePage(
+                                truck: vendor,
+                                isOwner: false,
+                                initialIsFavorite: false,
+                                isDarkMode: widget.isDarkMode,
+                                isGuestMode: false,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.storefront),
+                        label: const Text('Open Vendor Profile'),
+                      ),
+                    ),
 
                     const SizedBox(height: 16),
                     Text(
@@ -1819,7 +1965,50 @@ void initState() {
                 _detailLine('Reward Punches', '${customer['rewardPunches'] ?? 0}/5'),
                 _detailLine('Total Spent', '\$${customer['totalSpent'] ?? 0}'),
                 _detailLine('Last Visit', customer['lastVisit']),
+
                 const SizedBox(height: 16),
+
+                Text(
+                  'Customer Order History',
+                  style: TextStyle(
+                    color: _text,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                if (_customerOrders(customer).isEmpty)
+                  _emptyText('No orders found for this customer.')
+                else
+                  ..._customerOrders(customer).take(5).map((order) {
+                    return _orderTile(order);
+                  }),
+                  if (_customerOrders(customer).isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.receipt_long),
+                        label: const Text('View All Customer Orders'),
+                        onPressed: () {
+                          Navigator.pop(context);
+
+                          final phone = (customer['phone'] ?? '').toString().trim();
+                          final name = (customer['name'] ?? '').toString().trim();
+
+                          setState(() {
+                            _searchText = phone.isNotEmpty ? phone : name;
+                            _searchController.text = _searchText;
+                          });
+
+                          _tabController.animateTo(2);
+                        },
+                      ),
+                    ),
+
+                const SizedBox(height: 16),
+
                 _infoBanner(
                   icon: Icons.security,
                   title: 'Customer Moderation',

@@ -118,15 +118,11 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     return Colors.grey;
   }
   bool get _canUseOrdering {
-    final String plan = (widget.truck['plan'] ?? 'free').toString();
     final bool isVerified = widget.truck['isVerified'] == true;
-    final bool enablePayNow = widget.truck['enablePayNow'] ?? true;
 
-    // If Pay Now OFF → still allow ordering (Pay at Counter)
-    if (!enablePayNow) return true;
-
-    // Normal rule
-    return plan != 'free' || isVerified;
+    // POS and in-app ordering require verification.
+    // Free vendors can create a profile, but cannot use POS/orders until approved.
+    return isVerified;
   }
 
   bool get _isKitchen {

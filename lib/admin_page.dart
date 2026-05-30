@@ -363,7 +363,7 @@ void initState() {
           (v['idFrontImage'] ?? '').toString().trim().isNotEmpty ||
           (v['addressProofImage'] ?? '').toString().trim().isNotEmpty;
 
-      return status == 'pending' || hasVerificationData;
+      return status == 'pending';
     }).length;
   }
 
@@ -392,7 +392,7 @@ void initState() {
           (v['idFrontImage'] ?? '').toString().trim().isNotEmpty ||
           (v['addressProofImage'] ?? '').toString().trim().isNotEmpty;
 
-      return status == 'pending' || hasVerificationData;
+      return status == 'pending';
     }).toList();
   }
 

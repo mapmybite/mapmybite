@@ -51,6 +51,7 @@ class _TruckPageState extends State<TruckPage> {
   bool _isListView = false;
   bool _isDarkMode = false;
   bool _isSatelliteView = false;
+  int _adminTapCount = 0;
   Set<String> _favoriteIds = {};
   bool _showFavoritesOnly = false;
   bool _showOpenOnly = false;
@@ -347,6 +348,9 @@ class _TruckPageState extends State<TruckPage> {
     }
 
     final results = _allVendors.where((vendor) {
+    if (vendor['isSuspended'] == true) {
+      return false;
+    }
       final String searchableText = cleanSearchText([
         vendor['title'],
         vendor['cuisine'],
@@ -397,12 +401,21 @@ class _TruckPageState extends State<TruckPage> {
           matchesRadius;
     }).toList();
 
-    if (_currentUserPosition != null) {
-      results.sort(
-            (a, b) => _distanceInMilesToVendor(a)
-            .compareTo(_distanceInMilesToVendor(b)),
-      );
-    }
+    results.sort((a, b) {
+      final aFeatured = a['isFeatured'] == true;
+      final bFeatured = b['isFeatured'] == true;
+
+      if (aFeatured != bFeatured) {
+        return aFeatured ? -1 : 1;
+      }
+
+      if (_currentUserPosition != null) {
+        return _distanceInMilesToVendor(a)
+            .compareTo(_distanceInMilesToVendor(b));
+      }
+
+      return 0;
+    });
 
     return results;
   }
@@ -410,12 +423,6 @@ class _TruckPageState extends State<TruckPage> {
   @override
   void initState() {
     super.initState();
-
-    VendorData.foodTrucks.clear();
-    VendorData.foodTrucks.addAll(foodTrucks);
-
-    VendorData.homeKitchens.clear();
-    VendorData.homeKitchens.addAll(homeKitchens);
 
     _loadIcons();
     _loadFavorites();
@@ -807,14 +814,10 @@ class _TruckPageState extends State<TruckPage> {
       'dailySpecial': 'New business added on MapMyBite',
     };
 
+    await VendorData.addOrUpdateVendor(newBusiness);
+
     setState(() {
       _ownerBusiness = newBusiness;
-
-      if (isFoodTruck) {
-        foodTrucks.add(newBusiness);
-      } else {
-        homeKitchens.add(newBusiness);
-      }
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1128,6 +1131,15 @@ class _TruckPageState extends State<TruckPage> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              if (item['isFeatured'] == true)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 6),
+                                  child: Icon(
+                                    Icons.star,
+                                    color: Colors.amber,
+                                    size: 18,
+                                  ),
+                                ),
                               if (item['isVerified'] == true)
                                 const Padding(
                                   padding: EdgeInsets.only(left: 6),
@@ -1739,6 +1751,72 @@ class _TruckPageState extends State<TruckPage> {
       ),
     );
   }
+  void _handleAdminSecretTap() {
+    _adminTapCount++;
+
+    if (_adminTapCount < 7) {
+      return;
+    }
+
+    _adminTapCount = 0;
+
+    final pinController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Admin Access'),
+          content: TextField(
+            controller: pinController,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Enter PIN',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final pin = pinController.text.trim();
+
+                String role = '';
+
+                if (pin == '1981') {
+                  role = 'owner';
+                } else if (pin == '2026') {
+                  role = 'team';
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Wrong PIN')),
+                  );
+                  return;
+                }
+
+                Navigator.pop(dialogContext);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminPage(
+                      vendors: VendorData.allVendors,
+                      isDarkMode: _isDarkMode,
+                      adminRole: role,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Login'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1793,16 +1871,19 @@ class _TruckPageState extends State<TruckPage> {
             ),
           ],
         ),
-        title: ShaderMask(
-          shaderCallback: (bounds) => LinearGradient(
-            colors: [Colors.orange, Colors.deepOrangeAccent],
-          ).createShader(bounds),
-          child: const Text(
-            'MapMyBite',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: Colors.white,
+        title: GestureDetector(
+          onTap: _handleAdminSecretTap,
+          child: ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [Colors.orange, Colors.deepOrangeAccent],
+            ).createShader(bounds),
+            child: const Text(
+              'MapMyBite',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
@@ -1938,28 +2019,11 @@ class _TruckPageState extends State<TruckPage> {
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.admin_panel_settings),
-              title: const Text('Admin Dashboard'),
-              onTap: () {
-                Navigator.pop(context);
 
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminPage(
-                      vendors: _allVendors,
-                      isDarkMode: _isDarkMode,
-                      adminRole: 'owner',
-                    ),
-                  ),
-                );
-              },
-            ),
             ListTile(
               leading: const Icon(Icons.map),
               title: Text(
-                'Map (${foodTrucks.length} trucks, ${homeKitchens.length} kitchens)',
+                'Map (${VendorData.foodTrucks.length} trucks, ${VendorData.homeKitchens.length} kitchens)',
               ),
               onTap: _goToMapHome,
             ),
@@ -2044,19 +2108,19 @@ class _TruckPageState extends State<TruckPage> {
             ListTile(
               leading: const Icon(Icons.local_shipping),
               title: Text(AppText.foodTrucks()),
-              subtitle: Text('${foodTrucks.length} total'),
+              subtitle: Text('${VendorData.foodTrucks.length} total'),
               onTap: () {
                 Navigator.pop(context);
-                _showBusinessList('Food Trucks', foodTrucks);
+                _showBusinessList('Food Trucks', VendorData.foodTrucks);
               },
             ),
             ListTile(
               leading: const Icon(Icons.home_work),
               title: Text(AppText.homeKitchens()),
-              subtitle: Text('${homeKitchens.length} total'),
+              subtitle: Text('${VendorData.homeKitchens.length} total'),
               onTap: () {
                 Navigator.pop(context);
-                _showBusinessList('Home Kitchens', homeKitchens);
+                _showBusinessList('Home Kitchens', VendorData.homeKitchens);
               },
             ),
             ListTile(

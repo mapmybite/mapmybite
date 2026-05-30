@@ -6,6 +6,9 @@ import 'welcome_page.dart';
 import 'app_text.dart';
 import 'favorite_data.dart';
 import 'printer_test_page.dart';
+import 'vendor_data.dart';
+import 'order_data.dart';
+import 'owner_customer_data.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
@@ -44,6 +47,9 @@ Future<void> main() async {
   await AppText.loadLanguage();
 
   await FavoriteData.loadFavorites();
+  await VendorData.loadVendors();
+  await OrderData.loadOrders();
+  await OwnerCustomerData.loadCustomers();
 
   runApp(const MapMyBiteApp());
 }

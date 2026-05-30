@@ -4,6 +4,8 @@ import 'owner_customer_data.dart';
 import 'truck_page.dart';
 import 'orders_page.dart';
 import 'truck_profile_page.dart';
+import 'owner_portal_page.dart';
+import 'vendor_data.dart';
 
 class AdminPage extends StatefulWidget {
   final List<Map<String, dynamic>> vendors;
@@ -400,47 +402,72 @@ void initState() {
     );
   }
 
-  void _approveVendor(Map<String, dynamic> vendor) {
+  Future<void> _approveVendor(Map<String, dynamic> vendor) async {
     final title = (vendor['title'] ?? 'Vendor').toString();
+
     setState(() {
       vendor['isVerified'] = true;
       vendor['verificationStatus'] = 'approved';
     });
+
+    await VendorData.addOrUpdateVendor(vendor);
+
     _showAdminActionMessage('$title approved');
   }
 
-  void _rejectVendor(Map<String, dynamic> vendor) {
+  Future<void> _rejectVendor(Map<String, dynamic> vendor) async {
     final title = (vendor['title'] ?? 'Vendor').toString();
+
     setState(() {
       vendor['isVerified'] = false;
       vendor['verificationStatus'] = 'rejected';
     });
+
+    await VendorData.addOrUpdateVendor(vendor);
+
     _showAdminActionMessage('$title rejected');
   }
 
-  void _toggleSuspendVendor(Map<String, dynamic> vendor) {
+  Future<void> _toggleSuspendVendor(Map<String, dynamic> vendor) async {
     final title = (vendor['title'] ?? 'Vendor').toString();
     final next = vendor['isSuspended'] != true;
+
     setState(() {
       vendor['isSuspended'] = next;
     });
+
+    await VendorData.addOrUpdateVendor(vendor);
+
     _showAdminActionMessage(next ? '$title suspended' : '$title unsuspended');
   }
 
-  void _toggleFeaturedVendor(Map<String, dynamic> vendor) {
+  Future<void> _toggleFeaturedVendor(Map<String, dynamic> vendor) async {
     final title = (vendor['title'] ?? 'Vendor').toString();
     final next = vendor['isFeatured'] != true;
+
     setState(() {
       vendor['isFeatured'] = next;
     });
-    _showAdminActionMessage(next ? '$title marked featured' : '$title removed from featured');
+
+    await VendorData.addOrUpdateVendor(vendor);
+
+    _showAdminActionMessage(
+      next ? '$title marked featured' : '$title removed from featured',
+    );
   }
 
-  void _changeVendorPlan(Map<String, dynamic> vendor, String plan) {
+  Future<void> _changeVendorPlan(
+    Map<String, dynamic> vendor,
+    String plan,
+  ) async {
     final title = (vendor['title'] ?? 'Vendor').toString();
+
     setState(() {
       vendor['plan'] = plan.toLowerCase();
     });
+
+    await VendorData.addOrUpdateVendor(vendor);
+
     _showAdminActionMessage('$title plan changed to $plan');
   }
 
@@ -1640,6 +1667,41 @@ void initState() {
       ),
     );
   }
+  Future<void> _editVendorProfile(Map<String, dynamic> vendor) async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerPortalPage(
+          existingData: vendor,
+          isDarkMode: widget.isDarkMode,
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    await VendorData.addOrUpdateVendor(result);
+
+    if (!mounted) return;
+
+    setState(() {
+      vendor.addAll(result);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Vendor profile updated'),
+      ),
+    );
+  }
+  void _showVendorCustomersRewards(String businessName) {
+    setState(() {
+      _searchText = businessName;
+      _searchController.text = businessName;
+    });
+
+    _tabController.animateTo(3);
+  }
 
   void _showVendorDetails(Map<String, dynamic> vendor) {
     final title = (vendor['title'] ?? 'Unnamed Vendor').toString();
@@ -1746,6 +1808,20 @@ void initState() {
                           ),
                         ),
 
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showVendorCustomersRewards(title);
+                            },
+                            icon: const Icon(Icons.people),
+                            label: const Text('View Customers & Rewards'),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
                     const SizedBox(height: 12),
 
                     _detailLine('Legal Name', vendor['legalName']),
@@ -1753,6 +1829,24 @@ void initState() {
                     _detailLine('Verification Notes', vendor['verificationNotes']),
                     _detailLine('ID Proof Image', vendor['idFrontImage']),
                     _detailLine('Address Proof Image', vendor['addressProofImage']),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _editVendorProfile(vendor);
+                        },
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Edit Owner Profile'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
 
                     SizedBox(
                       width: double.infinity,
@@ -1797,8 +1891,8 @@ void initState() {
                           label: 'Approve',
                           icon: Icons.check_circle,
                           color: Colors.green,
-                          onTap: () {
-                            _approveVendor(vendor);
+                          onTap: () async {
+                            await _approveVendor(vendor);
                             sheetSetState(() {});
                           },
                         ),
@@ -1806,8 +1900,8 @@ void initState() {
                           label: 'Reject',
                           icon: Icons.cancel,
                           color: Colors.red,
-                          onTap: () {
-                            _rejectVendor(vendor);
+                          onTap: () async {
+                            await _rejectVendor(vendor);
                             sheetSetState(() {});
                           },
                         ),
@@ -1815,8 +1909,8 @@ void initState() {
                           label: isSuspended ? 'Unsuspend' : 'Suspend',
                           icon: Icons.block,
                           color: Colors.deepOrange,
-                          onTap: () {
-                            _toggleSuspendVendor(vendor);
+                          onTap: () async {
+                            await _toggleSuspendVendor(vendor);
                             sheetSetState(() {});
                           },
                         ),
@@ -1824,8 +1918,8 @@ void initState() {
                           label: isFeatured ? 'Unfeature' : 'Feature',
                           icon: Icons.star,
                           color: Colors.amber,
-                          onTap: () {
-                            _toggleFeaturedVendor(vendor);
+                          onTap: () async {
+                            await _toggleFeaturedVendor(vendor);
                             sheetSetState(() {});
                           },
                         ),
@@ -1852,8 +1946,8 @@ void initState() {
                           label: Text(p),
                           selected: selected,
                           selectedColor: Colors.orange.withValues(alpha: 0.22),
-                          onSelected: (_) {
-                            _changeVendorPlan(vendor, p);
+                          onSelected: (_) async {
+                            await _changeVendorPlan(vendor, p);
                             sheetSetState(() {});
                           },
                         );

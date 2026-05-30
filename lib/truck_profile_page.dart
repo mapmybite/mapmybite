@@ -19,6 +19,7 @@ import 'favorite_data.dart';
 import 'owner_customer_data.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'vendor_data.dart';
 
 class TruckProfilePage extends StatefulWidget {
   final Map<String, dynamic> truck;
@@ -750,11 +751,19 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
     );
 
     if (result != null && result is Map<String, dynamic>) {
+      await VendorData.addOrUpdateVendor(result);
+
       if (!mounted) return;
 
       setState(() {
         widget.truck.addAll(result);
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated and saved'),
+        ),
+      );
     }
   }
   void _addToFavorite() {
@@ -1297,14 +1306,14 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
     if (confirmed == true) {
       if (!mounted) return;
-      final customerData = OwnerCustomerData.saveOrUpdateCustomer(
+      final customerData = await OwnerCustomerData.saveOrUpdateCustomer(
         business: (widget.truck['title'] ?? '').toString(),
         name: customerName,
         phone: phone,
         totalSpent: _selectedMenuTotal,
       );
 
-      OrderData.orders.add({
+       await OrderData.addOrder({
         'business': widget.truck['title'] ?? '',
         'customer': customerName,
         'phone': phone,
@@ -2387,12 +2396,12 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () {
+                        onPressed: () async {
                           final now = DateTime.now();
                           final dateText =
                               '${now.month}/${now.day}/${now.year}';
                           final timeText = TimeOfDay.now().format(context);
-                          final customerData = OwnerCustomerData.saveOrUpdateCustomer(
+                          final customerData = await OwnerCustomerData.saveOrUpdateCustomer(
                             business: (widget.truck['title'] ?? '').toString(),
                             name: customerNameController.text.trim().isEmpty
                                 ? 'Walk-in Customer'
@@ -2435,7 +2444,7 @@ class _TruckProfilePageState extends State<TruckProfilePage> {
 
                           };
 
-                          OrderData.orders.add(posOrder);
+                          await OrderData.addOrder(posOrder);
                           _lastPosOrder = posOrder;
                           _printPosReceipt(posOrder);
 
